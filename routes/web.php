@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccessEventController;
+use App\Http\Controllers\AlcoholDebugController;
 use App\Http\Controllers\AlcoholStatusController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceController;
@@ -43,6 +44,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/alcohol', [AlcoholStatusController::class, 'index'])->name('alcohol.index');
     Route::post('/alcohol/grace-period', [AlcoholStatusController::class, 'updateGracePeriod'])->name('alcohol.grace-period');
+    Route::get('/alcohol/{employee}/debug', [AlcoholDebugController::class, 'show'])->name('alcohol.debug');
+    Route::post('/alcohol/{employee}/debug/snapshot', [AlcoholDebugController::class, 'snapshot'])->name('alcohol.debug.snapshot');
+    Route::post('/alcohol/{employee}/debug/reset-skip', [AlcoholDebugController::class, 'resetSkip'])->name('alcohol.debug.reset-skip');
+    Route::post('/alcohol/{employee}/debug/randomize-name', [AlcoholDebugController::class, 'randomizeName'])->name('alcohol.debug.randomize-name');
 
     Route::get('/events', [AccessEventController::class, 'index'])->name('events.index');
     Route::post('/events/fetch/{terminal}', [AccessEventController::class, 'fetchFromTerminal'])->name('events.fetch-terminal');

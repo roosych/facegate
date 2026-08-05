@@ -38,12 +38,26 @@ class HikvisionEventIngestService
         $employee = $empCode !== null ? Employee::where('emp_code', $empCode)->first() : null;
         $eventTime = isset($eventData['time']) ? Carbon::parse($eventData['time']) : now();
 
+        // serialNo is the terminal's own monotonically increasing per-event counter — present
+        // on both the real-time push and the polled AcsEvent shape — so it's an exact identity
+        // check when available. Real-time push payloads don't carry a "time" field on the
+        // per-event object (only the outer envelope's heartbeat-style "dateTime" does), so
+        // $eventTime above is just now() for push-delivered events; back-to-back genuine tests
+        // only seconds apart were colliding in the old ±30s time-window dedup below and getting
+        // silently dropped as "duplicates" even though they were distinct passes. Fall back to
+        // the time-window heuristic only when serialNo isn't present in the payload.
+        $serialNo = $eventData['serialNo'] ?? null;
+
         $alreadyExists = AccessEvent::where('hikvision_terminal_id', $terminal->id)
-            ->where('event_time', '>=', $eventTime->copy()->subSeconds(30))
-            ->where('event_time', '<=', $eventTime->copy()->addSeconds(30))
-            ->where(fn ($q) => $employee
-                ? $q->where('employee_id', $employee->id)
-                : $q->whereNull('employee_id')->where('card_no', $eventData['cardNo'] ?? null)
+            ->when(
+                $serialNo !== null,
+                fn ($q) => $q->where('raw_data->serialNo', $serialNo),
+                fn ($q) => $q->where('event_time', '>=', $eventTime->copy()->subSeconds(30))
+                    ->where('event_time', '<=', $eventTime->copy()->addSeconds(30))
+                    ->where(fn ($q2) => $employee
+                        ? $q2->where('employee_id', $employee->id)
+                        : $q2->whereNull('employee_id')->where('card_no', $eventData['cardNo'] ?? null)
+                    )
             )
             ->exists();
 

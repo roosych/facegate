@@ -54,6 +54,43 @@ class HikvisionEventWebhookTest extends TestCase
         $this->assertSame(1, AccessEvent::count());
     }
 
+    /**
+     * The device wraps real (non-heartbeat) events in an outer envelope — ipAddress, dateTime,
+     * eventType, etc. — with the actual per-event data (employeeNoString, cardNo,
+     * alcoholDetectionInfo) nested one level deeper under its own "AccessControllerEvent" key.
+     * Only the flat shape (no outer wrapper) was covered before, which is why a regression here
+     * silently dropped every real multipart event while heartbeats kept working fine.
+     */
+    public function test_ingests_a_multipart_access_controller_event_with_nested_wrapper(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getEmployeesRequiringAlcoholTest')->once()->andReturn([]);
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        $payload = json_encode([
+            'ipAddress' => '192.0.2.99',
+            'dateTime' => now()->toIso8601String(),
+            'eventType' => 'AccessControllerEvent',
+            'eventState' => 'active',
+            'AccessControllerEvent' => [
+                'employeeNoString' => '42',
+                'time' => now()->toIso8601String(),
+                'currentVerifyMode' => 'faceOrCard',
+                'alcoholDetectionInfo' => ['result' => 'normal', 'concentrationInfo' => ['concentrationValue' => 0]],
+            ],
+        ]);
+
+        $response = $this->post("/api/hikvision/{$terminal->id}/events/test-token", [
+            'AccessControllerEvent' => $payload,
+        ]);
+
+        $response->assertOk();
+        $this->assertSame(1, AccessEvent::count());
+    }
+
     public function test_ingests_a_plain_json_envelope(): void
     {
         $terminal = HikvisionTerminal::factory()->create();

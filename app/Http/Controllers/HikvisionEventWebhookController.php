@@ -72,13 +72,23 @@ class HikvisionEventWebhookController extends Controller
      */
     private function extractEventData(Request $request): ?array
     {
-        // Multipart form (device attaches a picture alongside the event field).
+        // Multipart form (device attaches a picture alongside the event field). The decoded
+        // field is an outer wrapper (ipAddress, dateTime, eventType, ...) that, for anything
+        // beyond a bare heartbeat, nests the actual per-event data (employeeNoString, cardNo,
+        // alcoholDetectionInfo, ...) one level deeper under its own EVENT_KEYS key — same shape
+        // the raw-JSON-body fallback below already unwraps.
         foreach (self::EVENT_KEYS as $key) {
             if ($request->has($key)) {
                 $raw = $request->input($key);
                 $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
 
                 if (is_array($decoded)) {
+                    foreach (self::EVENT_KEYS as $nestedKey) {
+                        if (isset($decoded[$nestedKey]) && is_array($decoded[$nestedKey])) {
+                            return $decoded[$nestedKey];
+                        }
+                    }
+
                     return $decoded;
                 }
             }

@@ -73,6 +73,59 @@ class HikvisionEventIngestServiceTest extends TestCase
         $this->assertSame(1, AccessEvent::count());
     }
 
+    /**
+     * Real-time push payloads carry no per-event "time" field (only the outer envelope's
+     * heartbeat-style timestamp does), so ingest() falls back to now() for $eventTime on every
+     * push-delivered event. Two genuinely distinct passes seconds apart — same employee, same
+     * card, same reading — used to collide in the old ±30s time-window dedup and get the second
+     * one silently dropped. serialNo (present on every real device payload, push or polled)
+     * distinguishes them.
+     */
+    public function test_does_not_deduplicate_distinct_events_with_different_serial_numbers_seconds_apart(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService();
+
+        $first = $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'cardNo' => '0000000042',
+            'serialNo' => 32,
+            'alcoholDetectionInfo' => ['result' => 'normal'],
+        ], []);
+
+        $second = $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'cardNo' => '0000000042',
+            'serialNo' => 38,
+            'alcoholDetectionInfo' => ['result' => 'normal'],
+        ], []);
+
+        $this->assertNotNull($first);
+        $this->assertNotNull($second);
+        $this->assertSame(2, AccessEvent::count());
+    }
+
+    public function test_deduplicates_the_same_serial_number_delivered_twice(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService();
+
+        $eventData = [
+            'employeeNoString' => '42',
+            'cardNo' => '0000000042',
+            'serialNo' => 32,
+            'alcoholDetectionInfo' => ['result' => 'normal'],
+        ];
+
+        $service->ingest($terminal, $eventData, []);
+        $second = $service->ingest($terminal, $eventData, []);
+
+        $this->assertNull($second);
+        $this->assertSame(1, AccessEvent::count());
+    }
+
     public function test_sets_grace_period_and_pushes_skip_when_employee_is_required_and_passes(): void
     {
         Http::fake(['*/ISAPI/AccessControl/UserInfo/SetUp*' => Http::response(['statusCode' => 1], 200)]);
