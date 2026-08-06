@@ -58,14 +58,14 @@ class HikvisionSyncService
 
         // Prefetch terminal state once to avoid redundant API calls per employee
         Cache::put(self::SYNC_STATUS_KEY.'_'.$terminal->id, [
-            'status'   => 'running',
+            'status' => 'running',
             'terminal' => $terminal->name,
-            'done'     => 0,
-            'total'    => $total,
-            'synced'   => 0,
-            'removed'  => 0,
-            'errors'   => 0,
-            'message'  => 'Fetching terminal state…',
+            'done' => 0,
+            'total' => $total,
+            'synced' => 0,
+            'removed' => 0,
+            'errors' => 0,
+            'message' => 'Fetching terminal state…',
         ], now()->addHour());
 
         $allPersons = $service->allPersons();
@@ -96,13 +96,13 @@ class HikvisionSyncService
         foreach ($employees as $i => $employee) {
             if ($i % 10 === 0 || $i === $total - 1) {
                 Cache::put(self::SYNC_STATUS_KEY.'_'.$terminal->id, [
-                    'status'  => 'running',
+                    'status' => 'running',
                     'terminal' => $terminal->name,
-                    'done'    => $i,
-                    'total'   => $total,
-                    'synced'  => $results['synced'],
+                    'done' => $i,
+                    'total' => $total,
+                    'synced' => $results['synced'],
                     'removed' => $results['removed'],
-                    'errors'  => $results['errors'],
+                    'errors' => $results['errors'],
                 ], now()->addHour());
             }
 
@@ -152,12 +152,19 @@ class HikvisionSyncService
                     }
                 }
 
-                // Face: skip upload if already on terminal
+                // Face: skip upload only if both the face model and its picture are on the
+                // terminal. A model alone isn't enough — persons enrolled while the device's
+                // "Save Registered Picture" option was off keep a working model (recognition
+                // passes) but no stored JPEG, which is why the terminal's own web UI showed
+                // them with an empty avatar. The person record exposes a faceURL only once a
+                // picture is actually stored, so an empty one means "re-upload me", and
+                // uploadFace() now replaces an existing model in place via FDModify.
                 $hasFace = false;
                 $isGuest = false;
+                $hasStoredPicture = ($terminalPerson['faceURL'] ?? '') !== '';
 
-                if (isset($terminalFaces[$empCodeStr])) {
-                    $hasFace = true; // face unchanged — skip write
+                if (isset($terminalFaces[$empCodeStr]) && $hasStoredPicture) {
+                    $hasFace = true; // face and picture unchanged — skip write
                 } elseif ($employee->photo_path === null) {
                     if ($this->isLikelyGuestName($employee->full_name)) {
                         // Placeholder/guest badge record (e.g. "Гость 44 ресепшн") — never
@@ -244,22 +251,22 @@ class HikvisionSyncService
 
         $terminal->update([
             'sync_stats' => [
-                'persons_added'     => $results['synced'],
+                'persons_added' => $results['synced'],
                 'persons_not_added' => $total - $results['synced'],
-                'persons_failed'    => $personsFailed,
-                'faces_added'       => $results['faces'],
-                'faces_not_added'   => $results['synced'] - $results['faces'] - $results['guestsSkipped'],
-                'faces_failed'      => $facesFailed,
-                'guests_skipped'    => $results['guestsSkipped'],
-                'cards_added'       => $results['cards'],
-                'cards_not_added'   => $results['synced'] - $results['cards'],
-                'cards_failed'      => $cardsFailed,
-                'alcohol_enabled'                     => $alcoholEnabled,
-                'alcohol_required'                    => $results['alcoholRequired'],
-                'alcohol_skipped'                      => $results['alcoholSkipped'],
-                'alcohol_failed'                       => $results['alcoholFailed'],
+                'persons_failed' => $personsFailed,
+                'faces_added' => $results['faces'],
+                'faces_not_added' => $results['synced'] - $results['faces'] - $results['guestsSkipped'],
+                'faces_failed' => $facesFailed,
+                'guests_skipped' => $results['guestsSkipped'],
+                'cards_added' => $results['cards'],
+                'cards_not_added' => $results['synced'] - $results['cards'],
+                'cards_failed' => $cardsFailed,
+                'alcohol_enabled' => $alcoholEnabled,
+                'alcohol_required' => $results['alcoholRequired'],
+                'alcohol_skipped' => $results['alcoholSkipped'],
+                'alcohol_failed' => $results['alcoholFailed'],
                 'alco_required_missing_from_terminal' => $alcoRequiredMissing,
-                'synced_at'         => now()->toDateTimeString(),
+                'synced_at' => now()->toDateTimeString(),
             ],
         ]);
 

@@ -4,8 +4,9 @@ namespace App\Services;
 
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use Illuminate\Support\Carbon;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -336,8 +337,7 @@ class HikvisionService
 
     /**
      * Upload a face photo for an employee via multipart/form-data (FaceDataRecord endpoint).
-     * If face already exists on the terminal, the upload is skipped (not an error).
-     * To force a face update, call refreshFace() which re-adds the person entirely.
+     * If a face already exists on the terminal, it is replaced in place via FDModify.
      */
     public function uploadFace(Employee $employee): void
     {
@@ -376,28 +376,47 @@ class HikvisionService
 
         $imageData = $this->normalizeFaceImage($imageData);
 
-        $response = $this->http()
-            ->attach(
-                'FaceDataRecord',
-                json_encode([
-                    'faceLibType' => 'blackFD',
-                    'FDID' => '1',
-                    'FPID' => (string) $employee->emp_code,
-                ]),
-                'FaceDataRecord',
-                ['Content-Type' => 'application/json']
-            )
-            ->attach('img', $imageData, 'img', ['Content-Type' => 'image/jpeg'])
-            ->put('/ISAPI/Intelligent/FDLib/FDSetUp?format=json');
+        $response = $this->sendFaceRecord($employee, $imageData);
 
         if ($response->successful()) {
             return;
         }
 
-        // Face already exists on the terminal — not an error, skip silently.
-        // To update a changed photo, use refreshFace() which deletes and re-adds the person.
-        if (($response->json('subStatusCode') ?? '') === 'deviceUserAlreadyExistFace') {
-            return;
+        // A face record already exists for this FPID and FDSetUp refuses to overwrite it.
+        // The sub-status differs across firmwares ('alreadyExist' on this device,
+        // 'deviceUserAlreadyExistFace' on others), so accept both and retry through
+        // FDModify, which replaces the stored picture in place. Without this the upload
+        // was reported as a hard sync error even though the person was fine, and a photo
+        // changed in RusGuard never reached the terminal.
+        if (in_array($response->json('subStatusCode') ?? '', ['alreadyExist', 'deviceUserAlreadyExistFace'], true)) {
+            $modifyResponse = $this->sendFaceRecord($employee, $imageData, modify: true);
+
+            if ($modifyResponse->successful()) {
+                return;
+            }
+
+            throw new RuntimeException(
+                'Failed to update existing face for '.$employee->emp_code.': '.$modifyResponse->body()
+            );
+        }
+
+        // The device deduplicates on picture content, and it remembers images it has seen even
+        // after the face library is emptied — deleting the FPID, wiping the library and
+        // recreating the person all leave it answering 'alreadyExistThisFace'. Since
+        // normalizeFaceImage() is deterministic, a person who once hit this stayed permanently
+        // without a photo. Re-encoding the same source at a different target size yields
+        // different bytes, which the device accepts; verified against a person stuck this way.
+        if (($response->json('subStatusCode') ?? '') === 'alreadyExistThisFace') {
+            $reEncoded = $this->reEncodeJpeg($imageData, 82);
+
+            if ($reEncoded !== $imageData && $this->sendFaceRecord($employee, $reEncoded)->successful()) {
+                return;
+            }
+
+            throw new RuntimeException(
+                'Terminal already holds this face for emp '.$employee->emp_code
+                .' and rejected a re-encoded copy too — clear that person\'s face on the terminal itself, then re-sync'
+            );
         }
 
         // Terminal rejected the photo because face detection failed (bad photo quality, no face visible, etc.)
@@ -410,6 +429,55 @@ class HikvisionService
         throw new RuntimeException(
             'Failed to upload face for '.$employee->emp_code.': '.$response->body()
         );
+    }
+
+    /**
+     * Re-encode a JPEG at a different quality so the bytes differ while the picture stays the
+     * same. Returns the input unchanged if GD is unavailable or the data isn't decodable.
+     */
+    private function reEncodeJpeg(string $imageData, int $quality): string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return $imageData;
+        }
+
+        $image = @imagecreatefromstring($imageData);
+
+        if ($image === false) {
+            return $imageData;
+        }
+
+        ob_start();
+        imagejpeg($image, null, $quality);
+        $encoded = ob_get_clean();
+        imagedestroy($image);
+
+        return $encoded === false ? $imageData : $encoded;
+    }
+
+    /**
+     * Send a face picture to the terminal as multipart/form-data. FDSetUp registers a new
+     * face, FDModify replaces the picture of one that already exists; both take the same
+     * descriptor, only under a differently named field.
+     */
+    private function sendFaceRecord(Employee $employee, string $imageData, bool $modify = false): Response
+    {
+        $field = $modify ? 'FaceDataModify' : 'FaceDataRecord';
+        $endpoint = $modify ? 'FDModify' : 'FDSetUp';
+
+        return $this->http()
+            ->attach(
+                $field,
+                json_encode([
+                    'faceLibType' => 'blackFD',
+                    'FDID' => '1',
+                    'FPID' => (string) $employee->emp_code,
+                ]),
+                $field,
+                ['Content-Type' => 'application/json']
+            )
+            ->attach('img', $imageData, $employee->emp_code.'.jpg', ['Content-Type' => 'image/jpeg'])
+            ->put('/ISAPI/Intelligent/FDLib/'.$endpoint.'?format=json');
     }
 
     /**
