@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\SyncAllJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -24,3 +25,13 @@ Schedule::command('hikvision:fetch-events', ['--minutes' => 35])->everyThirtyMin
 // protects nothing — the work itself is guarded by ShouldBeUnique on the jobs.
 Schedule::command('hikvision:sync-all')->everyFifteenMinutes();
 Schedule::command('rusguard:poll-audit')->everyMinute()->withoutOverlapping();
+
+// Correctness floor for RusGuard → local DB. poll-audit above reacts within a minute, but it
+// can only react to the message types it knows about, so anything not on that list would
+// otherwise never arrive; a new employee was measured sitting unsynced for three days. This
+// re-reads RusGuard wholesale and converges regardless of what the audit log did or didn't
+// report. Measured at 85.7s for 49 access points and 1005 employees, against a terminal push
+// that already costs ~30s every 15 minutes — cheap enough to just always run. ShouldBeUnique
+// on SyncAllJob drops this if one is already queued, and the 15-minute push above carries the
+// results on to the terminals.
+Schedule::job(new SyncAllJob)->hourly();

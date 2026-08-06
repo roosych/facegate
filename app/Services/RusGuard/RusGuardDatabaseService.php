@@ -62,6 +62,7 @@ class RusGuardDatabaseService
                 CONVERT(varchar(36), e.EmployeeGroupID) AS groupId
             FROM Employee e
             WHERE e.IsRemoved = 0
+              AND e.IsLocked = 0
               {$excludeClause}
               AND (
                   EXISTS (
@@ -124,10 +125,10 @@ class RusGuardDatabaseService
         }
 
         $typeMap = [
-            'TourniquetDriver'      => 'Турникет',
-            'OneSidedDoorDriver'    => 'Дверь',
-            'TwoSidedDoorDriver'    => 'Дверь (2 стор.)',
-            'GateDriver'            => 'Ворота',
+            'TourniquetDriver' => 'Турникет',
+            'OneSidedDoorDriver' => 'Дверь',
+            'TwoSidedDoorDriver' => 'Дверь (2 стор.)',
+            'GateDriver' => 'Ворота',
             'FaceRecognitionDriver' => 'Биометрия',
         ];
 
@@ -142,10 +143,10 @@ class RusGuardDatabaseService
 
             $levelToPoints[$ap['levelId']][] = $ap['driverId'];
             $pointMap[$ap['driverId']] = [
-                'driverId'   => $ap['driverId'],
-                'name'       => $ap['name'],
+                'driverId' => $ap['driverId'],
+                'name' => $ap['name'],
                 'deviceType' => $deviceType,
-                'employees'  => [],
+                'employees' => [],
             ];
         }
 
@@ -168,6 +169,7 @@ class RusGuardDatabaseService
             INNER JOIN EmployeeAcsAccessLevel eal ON eal.EmployeeID = e._id
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = eal.AcsAccessLevelID
             WHERE e.IsRemoved = 0
+              AND e.IsLocked = 0
               {$excludeClause}
               AND ap.IsRemoved = 0
               AND (eal.EndDate IS NULL OR eal.EndDate > GETDATE())
@@ -201,6 +203,7 @@ class RusGuardDatabaseService
             INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = e.EmployeeGroupID
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = gal.AcsAccessLevelID
             WHERE e.IsRemoved = 0
+              AND e.IsLocked = 0
               {$excludeClause}
               AND e.IsAccessLevelsInherited = 1
               AND ap.IsRemoved = 0
@@ -313,21 +316,21 @@ class RusGuardDatabaseService
     public function getAccessPointDeviceType(string $driverId): ?string
     {
         $typeMap = [
-            'TourniquetDriver'      => 'Турникет',
-            'OneSidedDoorDriver'    => 'Дверь',
-            'TwoSidedDoorDriver'    => 'Дверь (2 стор.)',
-            'GateDriver'            => 'Ворота',
+            'TourniquetDriver' => 'Турникет',
+            'OneSidedDoorDriver' => 'Дверь',
+            'TwoSidedDoorDriver' => 'Дверь (2 стор.)',
+            'GateDriver' => 'Ворота',
             'FaceRecognitionDriver' => 'Биометрия',
         ];
 
-        $stmt = $this->pdo()->prepare("
+        $stmt = $this->pdo()->prepare('
             SELECT TOP 1 d.ObjectTypeName AS driverType
             FROM AcsAccessPoint ap
             INNER JOIN Driver d ON d._idResource = ap.DriverID
             WHERE ap.IsRemoved = 0
               AND d.ObjectTypeName IS NOT NULL
               AND CONVERT(varchar(36), ap.DriverID) = ?
-        ");
+        ');
 
         $stmt->execute([strtoupper($driverId)]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -346,7 +349,11 @@ class RusGuardDatabaseService
      * access point, unlike getAccessPointsWithEmployees()/getEmployeesForAccessPoint(). Used
      * to detect employees who've been synced locally in the past (because they once had
      * access to something) but have since disappeared from RusGuard entirely (fired, moved to
-     * the excluded/departed-employees group) so they can be deactivated locally.
+     * the excluded/departed-employees group, blocked) so they can be deactivated locally.
+     *
+     * Must stay in step with the point-scoped queries above: anything they exclude has to be
+     * excluded here too, otherwise the employee is dropped from every turnstile but never
+     * deactivated, and their local row lingers as active forever.
      *
      * @return array<int, string> lowercase uuids
      */
@@ -363,6 +370,7 @@ class RusGuardDatabaseService
             SELECT CONVERT(varchar(36), _id) AS uuid
             FROM Employee
             WHERE IsRemoved = 0
+              AND IsLocked = 0
               {$excludeClause}
         ");
         $stmt->execute($excludedGroupIds);
@@ -454,7 +462,7 @@ class RusGuardDatabaseService
     private function getEmployeeGroupMemberUuids(string $groupId, bool $includeChilds): array
     {
         if ($includeChilds) {
-            $sql = "
+            $sql = '
                 WITH GroupTree AS (
                     SELECT _id FROM EmployeeGroup WHERE _id = ?
                     UNION ALL
@@ -466,7 +474,7 @@ class RusGuardDatabaseService
                 FROM Employee e
                 WHERE e.IsRemoved = 0
                   AND e.EmployeeGroupID IN (SELECT _id FROM GroupTree)
-            ";
+            ';
         } else {
             $sql = '
                 SELECT CONVERT(varchar(36), e._id) AS uuid
@@ -524,8 +532,16 @@ class RusGuardDatabaseService
 
     /**
      * AuditData.MsgTypeId values worth reacting to: anything that can change who has access
-     * to a point or who's required to alcohol-test. Excludes purely informational entries
-     * (operator login/logout, device commands, etc.) to avoid syncing on unrelated activity.
+     * to a point, what we push for them, or who's required to alcohol-test. Excludes purely
+     * informational entries (operator login/logout, device commands, etc.) to avoid syncing on
+     * unrelated activity.
+     *
+     * Keep this generous. It is the only low-latency trigger there is, and measuring the real
+     * audit log showed how easily a gap hides here: 22 of 24 employee creations and 147 of 174
+     * key changes over 30 days carried no other watched event within ten minutes of them, so
+     * those people and cards only reached the terminals whenever something unrelated happened
+     * to provoke a resync — once after three days. The hourly SyncAllJob is the actual
+     * correctness floor; this list only decides how fast a change lands.
      *
      * @var array<int, int>
      */
@@ -533,11 +549,15 @@ class RusGuardDatabaseService
         6,  // Удаление сотрудника
         9,  // Блокировка сотрудника
         10, // Разблокировка сотрудника
+        14, // Изменение ключа у сотрудника
+        16, // Изменение данных сотрудника
+        17, // Добавление сотрудника
         19, // Перемещение сотрудника в другую группу
         22, // Добавление уровня доступа сотруднику
         23, // Добавление уровня доступа группе сотрудников
         24, // Удаление уровня доступа у сотрудника
         25, // Удаление уровня доступа у группы сотрудников
+        26, // Редактирование срока действия уровня доступа
         44, // Алкотестирование. Добавление группы
         45, // Алкотестирование. Удаление группы
         46, // Алкотестирование. Изменение приоритета
@@ -615,6 +635,7 @@ class RusGuardDatabaseService
                     SELECT COUNT(DISTINCT e._id)
                     FROM Employee e
                     WHERE e.IsRemoved = 0
+                      AND e.IsLocked = 0
                       AND (
                           EXISTS (
                               SELECT 1 FROM EmployeeAcsAccessLevel eal
@@ -644,10 +665,10 @@ class RusGuardDatabaseService
         $stmt->execute(['Name']);
 
         $typeMap = [
-            'TourniquetDriver'      => 'Турникет',
-            'OneSidedDoorDriver'    => 'Дверь',
-            'TwoSidedDoorDriver'    => 'Дверь (2 стор.)',
-            'GateDriver'            => 'Ворота',
+            'TourniquetDriver' => 'Турникет',
+            'OneSidedDoorDriver' => 'Дверь',
+            'TwoSidedDoorDriver' => 'Дверь (2 стор.)',
+            'GateDriver' => 'Ворота',
             'FaceRecognitionDriver' => 'Биометрия',
         ];
 
@@ -660,9 +681,9 @@ class RusGuardDatabaseService
             $type = $typeMap[$typeKey] ?? '';
 
             $points[] = [
-                'driverId'      => $row['driverId'],
-                'name'          => $row['name'] ?? '',
-                'type'          => $type,
+                'driverId' => $row['driverId'],
+                'name' => $row['name'] ?? '',
+                'type' => $type,
                 'employeeCount' => (int) $row['employeeCount'],
             ];
         }
