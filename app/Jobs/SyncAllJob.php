@@ -3,18 +3,25 @@
 namespace App\Jobs;
 
 use App\Services\SyncService;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
-class SyncAllJob implements ShouldQueue
+class SyncAllJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
     public int $timeout = 3600;
 
     public int $tries = 1;
+
+    /**
+     * An org-wide resync reads current RusGuard state, so a second one queued behind the
+     * first would only repeat work it already covered. Safety valve above $timeout.
+     */
+    public int $uniqueFor = 4200;
 
     public function handle(SyncService $syncService): void
     {

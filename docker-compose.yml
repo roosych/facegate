@@ -30,7 +30,9 @@ services:
     container_name: zkbio_queue
     restart: unless-stopped
     working_dir: /var/www
-    command: php artisan queue:work --sleep=3 --timeout=3600
+    # --max-time recycles the worker hourly so it picks up deployed code instead of serving
+    # whatever was loaded when the container started. Restart policy brings it straight back.
+    command: php artisan queue:work --sleep=3 --timeout=3600 --max-time=3600
     volumes:
       - .:/var/www
     networks:

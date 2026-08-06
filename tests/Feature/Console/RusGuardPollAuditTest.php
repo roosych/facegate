@@ -73,7 +73,7 @@ class RusGuardPollAuditTest extends TestCase
         ]);
     }
 
-    public function test_skips_dispatch_when_a_resync_is_already_running(): void
+    public function test_holds_the_cursor_when_a_resync_is_already_running(): void
     {
         Bus::fake();
         DB::table('rusguard_audit_cursor')->where('id', 1)->update(['last_audit_id' => 500]);
@@ -88,7 +88,33 @@ class RusGuardPollAuditTest extends TestCase
 
         $this->artisan('rusguard:poll-audit')->assertExitCode(0);
 
-        $this->assertSame(510, DB::table('rusguard_audit_cursor')->where('id', 1)->value('last_audit_id'));
+        // The cursor must not move: the status key is shared with jobs that never read
+        // RusGuard, so advancing it here used to drop these events permanently.
+        $this->assertSame(500, DB::table('rusguard_audit_cursor')->where('id', 1)->value('last_audit_id'));
         Bus::assertNothingDispatched();
+    }
+
+    public function test_picks_the_held_events_up_again_once_nothing_is_running(): void
+    {
+        Bus::fake();
+        DB::table('rusguard_audit_cursor')->where('id', 1)->update(['last_audit_id' => 500]);
+        HikvisionTerminal::factory()->create(['is_active' => true]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getLatestAuditId')->twice()->andReturn(510);
+        $rusGuardDb->shouldReceive('getRelevantAuditEventsSince')->twice()->with(500)->andReturn([
+            ['id' => 505, 'dateTime' => '2026-01-01T00:00:00', 'msgTypeId' => 22, 'message' => 'test', 'details' => 'x', 'employeeUuid' => null],
+        ]);
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        Cache::put(SyncService::SYNC_STATUS_KEY, ['status' => 'running']);
+        $this->artisan('rusguard:poll-audit')->assertExitCode(0);
+        Bus::assertNothingDispatched();
+
+        Cache::forget(SyncService::SYNC_STATUS_KEY);
+        $this->artisan('rusguard:poll-audit')->assertExitCode(0);
+
+        $this->assertSame(510, DB::table('rusguard_audit_cursor')->where('id', 1)->value('last_audit_id'));
+        Bus::assertChained([SyncAllJob::class, SyncHikvisionTerminalJob::class]);
     }
 }

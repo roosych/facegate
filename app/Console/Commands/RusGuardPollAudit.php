@@ -45,29 +45,32 @@ class RusGuardPollAudit extends Command
                 $this->line("  #{$event['id']} [{$event['dateTime']}] {$event['message']}: {$event['details']}");
             }
 
-            // A single SyncAllJob run already reads the org's current RusGuard state, so it
-            // naturally picks up every audit event that arrived before it started — including
-            // ones from audit polls that ran while it was in flight. Dispatching another chain
-            // on top would just queue a redundant multi-minute resync behind it, so skip while
-            // one is already running; this poll's cursor advance means the in-flight run (or
-            // the next poll once it's done) still covers these events.
+            // A single SyncAllJob run already reads the org's current RusGuard state, so
+            // dispatching another chain on top would just queue a redundant multi-minute
+            // resync behind it — skip while one is in flight. The cursor must stay put when we
+            // skip, though: this status key is shared with PushTurnstileToDevicesJob, which
+            // does not read RusGuard at all, so "something is running" is no guarantee these
+            // particular events get covered. Leaving the cursor alone costs at most a repeated
+            // resync on the next poll, whereas advancing it dropped the events for good.
             $syncStatus = Cache::get(SyncService::SYNC_STATUS_KEY)['status'] ?? null;
 
             if ($syncStatus === 'running') {
-                $this->info('A RusGuard resync is already in progress — skipping, cursor still advances.');
-            } else {
-                // SyncAllJob (org-wide RusGuard resync) has a 1-hour timeout — far too heavy to
-                // run inline in a once-a-minute command. Queue it, and chain the Hikvision pushes
-                // after it so they read the freshly-synced local pivot instead of stale data.
-                // Chaining (rather than dispatching separately) guarantees the ordering even if
-                // this deployment ever moves beyond a single queue worker.
-                $terminalJobs = HikvisionTerminal::where('is_active', true)
-                    ->get()
-                    ->map(fn (HikvisionTerminal $terminal) => new SyncHikvisionTerminalJob($terminal))
-                    ->all();
+                $this->info('A resync is already in progress — skipping, cursor held at #'.$cursor.'.');
 
-                Bus::chain([new SyncAllJob(), ...$terminalJobs])->dispatch();
+                return self::SUCCESS;
             }
+
+            // SyncAllJob (org-wide RusGuard resync) has a 1-hour timeout — far too heavy to
+            // run inline in a once-a-minute command. Queue it, and chain the Hikvision pushes
+            // after it so they read the freshly-synced local pivot instead of stale data.
+            // Chaining (rather than dispatching separately) guarantees the ordering even if
+            // this deployment ever moves beyond a single queue worker.
+            $terminalJobs = HikvisionTerminal::where('is_active', true)
+                ->get()
+                ->map(fn (HikvisionTerminal $terminal) => new SyncHikvisionTerminalJob($terminal))
+                ->all();
+
+            Bus::chain([new SyncAllJob, ...$terminalJobs])->dispatch();
         }
 
         DB::table('rusguard_audit_cursor')->where('id', 1)->update(['last_audit_id' => $latestId, 'updated_at' => now()]);
