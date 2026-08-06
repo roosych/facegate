@@ -546,6 +546,16 @@ class RusGuardDatabaseService
      * @var array<int, int>
      */
     private const RELEVANT_AUDIT_MSG_TYPES = [
+        // Access points enter and leave our world through access levels — the point queries
+        // join AcsAccessPoint to AcsAccessLevel — so these are what "a turnstile appeared or
+        // disappeared" looks like in the audit log. Deleting the driver itself has no message
+        // type of its own; the hourly resync is what catches that.
+        2,  // Добавление точки доступа в уровень доступа
+        3,  // Редактирование точки доступа
+        4,  // Удаление точки доступа из уровня доступа
+        5,  // Удаление уровня доступа
+        20, // Добавление уровня доступа
+
         6,  // Удаление сотрудника
         9,  // Блокировка сотрудника
         10, // Разблокировка сотрудника
