@@ -25,7 +25,7 @@ class HikvisionSyncService
      * Sync all employees from turnstiles linked to this terminal.
      * Adds new employees, updates existing ones, removes those no longer linked.
      *
-     * @return array{synced: int, removed: int, errors: int, faces: int, cards: int, guestsSkipped: int, alcoholRequired: int, alcoholSkipped: int, alcoholFailed: int}
+     * @return array{synced: int, removed: int, errors: int, faces: int, cards: int, guestsSkipped: int, alcoholRequired: int, alcoholSkipped: int, alcoholFailed: int, removalSkipped: string|null}
      */
     public function syncEmployeesForTerminal(HikvisionTerminal $terminal): array
     {
@@ -86,6 +86,7 @@ class HikvisionSyncService
 
         $results = [
             'synced' => 0, 'removed' => 0, 'errors' => 0, 'faces' => 0, 'cards' => 0, 'guestsSkipped' => 0,
+            'removalSkipped' => null,
             'alcoholRequired' => 0, 'alcoholSkipped' => 0, 'alcoholFailed' => 0,
         ];
         $syncedCodes = [];
@@ -245,7 +246,22 @@ class HikvisionSyncService
 
         // Remove persons on the terminal that are no longer linked. Reuses the person
         // list already fetched above instead of re-scanning the whole terminal.
-        $results['removed'] = $this->removeUnlinkedPersons($service, $terminal, $allPersons, $syncedCodes);
+        //
+        // Only ever act on a roster we trust. An empty one does not mean "nobody belongs on
+        // this device" — it is what a terminal bound to a detached or deactivated access point
+        // looks like, and removal would then wipe every person off working hardware. That is
+        // reachable in practice: when a point's driverId changes in RusGuard the sync creates a
+        // fresh turnstile and deactivates the old one, leaving any terminal still bound to the
+        // old row reading an empty, no-longer-updated pivot.
+        $roster = $this->rosterTrustProblem($terminal, $employees->count());
+
+        if ($roster !== null) {
+            $results['removed'] = 0;
+            $results['removalSkipped'] = $roster;
+            $this->log(null, $terminal->id, 'hikvision_remove', 'error', 'Removal skipped — '.$roster);
+        } else {
+            $results['removed'] = $this->removeUnlinkedPersons($service, $terminal, $allPersons, $syncedCodes);
+        }
 
         $this->flushLogs();
 
@@ -271,6 +287,7 @@ class HikvisionSyncService
                 'cards_added' => $results['cards'],
                 'cards_not_added' => $results['synced'] - $results['cards'],
                 'cards_failed' => $cardsFailed,
+                'removal_skipped' => $results['removalSkipped'],
                 'alcohol_enabled' => $alcoholEnabled,
                 'alcohol_required' => $results['alcoholRequired'],
                 'alcohol_skipped' => $results['alcoholSkipped'],
@@ -381,6 +398,31 @@ class HikvisionSyncService
      * @param  array<int, array<string, mixed>>  $allPersons
      * @param  array<int, string>  $keepEmpCodes
      */
+    /**
+     * Why this run's employee roster can't be trusted to drive deletions, or null when it can.
+     *
+     * Deleting people is the only irreversible thing this sync does, so it is gated on the
+     * roster being meaningful rather than merely present.
+     */
+    private function rosterTrustProblem(HikvisionTerminal $terminal, int $rosterSize): ?string
+    {
+        $turnstile = $terminal->turnstile;
+
+        if ($turnstile === null) {
+            return 'terminal is not linked to an access point';
+        }
+
+        if (! $turnstile->is_active) {
+            return 'access point ['.$turnstile->name.'] is deactivated, so its employee list is no longer maintained';
+        }
+
+        if ($rosterSize === 0) {
+            return 'access point ['.$turnstile->name.'] has no employees linked';
+        }
+
+        return null;
+    }
+
     /**
      * Alcohol-skip flag currently stored for a person on the terminal, as returned by
      * UserInfo/Search. Null when the person isn't on the terminal yet or the field is absent,
