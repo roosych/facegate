@@ -18,6 +18,12 @@ use Throwable;
  */
 class HikvisionService
 {
+    /**
+     * How many times to re-ask for a search page that came back empty while the device still
+     * claims more rows. See searchAllPages().
+     */
+    private const SEARCH_PAGE_RETRIES = 3;
+
     private string $baseUrl;
 
     public function __construct(private readonly HikvisionTerminal $terminal)
@@ -105,17 +111,64 @@ class HikvisionService
      */
     public function allPersons(): array
     {
-        $all = [];
-        $offset = 0;
-        $pageSize = 50;
         $searchId = (string) mt_rand(100000, 999999);
 
-        do {
+        return $this->searchAllPages(function (int $offset, int $pageSize) use ($searchId): array {
             $result = $this->searchPersons($offset, $pageSize, $searchId);
-            $page = $result['persons'];
+
+            return ['items' => $result['persons'], 'total' => $result['total']];
+        }, 'person');
+    }
+
+    /**
+     * Drive a paginated ISAPI search to completion and return every row it yields.
+     *
+     * Two device behaviours are handled here. It caps pages below the requested size (30
+     * rather than 50 in practice), which is harmless. But it also answers mid-pagination with
+     * an empty page now and then while totalMatches still promises more rows, and taking that
+     * as the end of the list silently truncated the result — 120 and 210 rows out of 668 were
+     * both observed. A short roster is not a harmless performance issue: the sync re-pushes
+     * people it already has, and removeUnlinkedPersons() never sees the persons missing from
+     * it, so someone who should have lost access keeps it. Retry an empty page before
+     * believing it, and refuse to hand back a knowingly partial list.
+     *
+     * The page callback is expected to swallow transport errors and report an empty page, so
+     * a blip is retried here rather than aborting the whole scan; totalMatches is tracked as a
+     * high-water mark so a failed page reporting 0 can't shrink the expectation either.
+     *
+     * @param  callable(int $offset, int $pageSize): array{items: array<int, mixed>, total: int}  $fetchPage
+     * @return array<int, mixed>
+     *
+     * @throws RuntimeException when the device keeps returning nothing while claiming more rows
+     */
+    private function searchAllPages(callable $fetchPage, string $what, int $pageSize = 50): array
+    {
+        $all = [];
+        $offset = 0;
+        $total = 0;
+
+        do {
+            $result = $fetchPage($offset, $pageSize);
+            $page = $result['items'];
+            $total = max($total, $result['total']);
+
+            for ($attempt = 1; $page === [] && $offset < $total && $attempt <= self::SEARCH_PAGE_RETRIES; $attempt++) {
+                usleep(300_000 * $attempt);
+                $result = $fetchPage($offset, $pageSize);
+                $page = $result['items'];
+                $total = max($total, $result['total']);
+            }
+
+            if ($page === [] && $offset < $total) {
+                throw new RuntimeException(
+                    'Hikvision '.$what.' search truncated on ['.$this->terminal->name.']: '
+                    .'got '.$offset.' of '.$total.' rows after '.self::SEARCH_PAGE_RETRIES.' retries'
+                );
+            }
+
             $all = array_merge($all, $page);
             $offset += count($page);
-        } while (count($page) > 0 && ($offset < $result['total'] || count($page) >= $pageSize));
+        } while ($page !== [] && ($offset < $total || count($page) >= $pageSize));
 
         return $all;
     }
@@ -192,18 +245,13 @@ class HikvisionService
     /**
      * Fetch all cards stored on the terminal, keyed by employeeNo.
      *
-     * @return array<string, array<int, string>>  employeeNo => list of cardNos
+     * @return array<string, array<int, string>> employeeNo => list of cardNos
      */
     public function allCards(): array
     {
-        $all = [];
-        $offset = 0;
-        $pageSize = 50;
         $searchId = (string) mt_rand(100000, 999999);
-        $page = [];
-        $total = 0;
 
-        do {
+        $rows = $this->searchAllPages(function (int $offset, int $pageSize) use ($searchId): array {
             try {
                 $response = $this->http()
                     ->withHeaders(['Content-Type' => 'application/json'])
@@ -224,25 +272,28 @@ class HikvisionService
                     $page = [$page];
                 }
 
-                $total = (int) ($search['totalMatches'] ?? 0);
-
-                foreach ($page as $card) {
-                    $empNo = (string) ($card['employeeNo'] ?? '');
-                    $cardNo = (string) ($card['cardNo'] ?? '');
-                    if ($empNo !== '' && $cardNo !== '') {
-                        $all[$empNo][] = $cardNo;
-                    }
-                }
-
-                $offset += count($page);
+                return ['items' => $page, 'total' => (int) ($search['totalMatches'] ?? 0)];
             } catch (Throwable $e) {
-                Log::error('Hikvision allCards failed', [
+                Log::error('Hikvision allCards page failed', [
                     'terminal' => $this->terminal->name,
+                    'offset' => $offset,
                     'error' => $e->getMessage(),
                 ]);
-                break;
+
+                return ['items' => [], 'total' => 0];
             }
-        } while (count($page) > 0 && ($offset < $total || count($page) >= $pageSize));
+        }, 'card');
+
+        $all = [];
+
+        foreach ($rows as $card) {
+            $empNo = (string) ($card['employeeNo'] ?? '');
+            $cardNo = (string) ($card['cardNo'] ?? '');
+
+            if ($empNo !== '' && $cardNo !== '') {
+                $all[$empNo][] = $cardNo;
+            }
+        }
 
         return $all;
     }
@@ -254,14 +305,9 @@ class HikvisionService
      */
     public function empCodesWithFace(): array
     {
-        $result = [];
-        $offset = 0;
-        $pageSize = 50;
         $searchId = (string) mt_rand(100000, 999999);
-        $page = [];
-        $total = 0;
 
-        do {
+        $rows = $this->searchAllPages(function (int $offset, int $pageSize) use ($searchId): array {
             try {
                 $response = $this->http()
                     ->withHeaders(['Content-Type' => 'application/json'])
@@ -274,25 +320,28 @@ class HikvisionService
                     ]);
 
                 $data = $response->json() ?? [];
-                $page = $data['MatchList'] ?? [];
-                $total = (int) ($data['totalMatches'] ?? 0);
 
-                foreach ($page as $item) {
-                    $fpid = (string) ($item['FPID'] ?? '');
-                    if ($fpid !== '') {
-                        $result[$fpid] = true;
-                    }
-                }
-
-                $offset += count($page);
+                return ['items' => $data['MatchList'] ?? [], 'total' => (int) ($data['totalMatches'] ?? 0)];
             } catch (Throwable $e) {
-                Log::error('Hikvision empCodesWithFace failed', [
+                Log::error('Hikvision empCodesWithFace page failed', [
                     'terminal' => $this->terminal->name,
+                    'offset' => $offset,
                     'error' => $e->getMessage(),
                 ]);
-                break;
+
+                return ['items' => [], 'total' => 0];
             }
-        } while (count($page) > 0 && ($offset < $total || count($page) >= $pageSize));
+        }, 'face');
+
+        $result = [];
+
+        foreach ($rows as $item) {
+            $fpid = (string) ($item['FPID'] ?? '');
+
+            if ($fpid !== '') {
+                $result[$fpid] = true;
+            }
+        }
 
         return $result;
     }
