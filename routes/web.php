@@ -44,6 +44,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/alcohol', [AlcoholStatusController::class, 'index'])->name('alcohol.index');
     Route::post('/alcohol/grace-period', [AlcoholStatusController::class, 'updateGracePeriod'])->name('alcohol.grace-period');
+    Route::post('/alcohol/notifications', [AlcoholStatusController::class, 'updateNotificationSettings'])->name('alcohol.notifications');
+    Route::post('/alcohol/{employee}/clear-skip', [AlcoholStatusController::class, 'clearSkip'])->name('alcohol.clear-skip');
     Route::get('/alcohol/{employee}/debug', [AlcoholDebugController::class, 'show'])->name('alcohol.debug');
     Route::post('/alcohol/{employee}/debug/snapshot', [AlcoholDebugController::class, 'snapshot'])->name('alcohol.debug.snapshot');
     Route::post('/alcohol/{employee}/debug/reset-skip', [AlcoholDebugController::class, 'resetSkip'])->name('alcohol.debug.reset-skip');

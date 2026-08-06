@@ -2,13 +2,16 @@
 
 namespace Tests\Unit\Services;
 
+use App\Mail\AlcoholTestFailedMail;
 use App\Models\AccessEvent;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
+use App\Models\Setting;
 use App\Models\Turnstile;
 use App\Services\HikvisionEventIngestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class HikvisionEventIngestServiceTest extends TestCase
@@ -18,7 +21,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     public function test_ignores_events_without_alcohol_detection_info(): void
     {
         $terminal = HikvisionTerminal::factory()->create();
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $result = $service->ingest($terminal, ['employeeNoString' => '1', 'time' => now()->toIso8601String()], []);
 
@@ -29,7 +32,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     public function test_ignores_events_with_no_employee_or_card_identifier(): void
     {
         $terminal = HikvisionTerminal::factory()->create();
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $result = $service->ingest($terminal, ['alcoholDetectionInfo' => ['result' => 'normal']], []);
 
@@ -40,7 +43,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         $terminal = HikvisionTerminal::factory()->create();
         $employee = Employee::factory()->create(['emp_code' => 42]);
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $event = $service->ingest($terminal, [
             'employeeNoString' => '42',
@@ -58,7 +61,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         $terminal = HikvisionTerminal::factory()->create();
         Employee::factory()->create(['emp_code' => 42]);
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $eventData = [
             'employeeNoString' => '42',
@@ -85,7 +88,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         $terminal = HikvisionTerminal::factory()->create();
         Employee::factory()->create(['emp_code' => 42]);
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $first = $service->ingest($terminal, [
             'employeeNoString' => '42',
@@ -110,7 +113,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         $terminal = HikvisionTerminal::factory()->create();
         Employee::factory()->create(['emp_code' => 42]);
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $eventData = [
             'employeeNoString' => '42',
@@ -135,7 +138,7 @@ class HikvisionEventIngestServiceTest extends TestCase
         $employee = Employee::factory()->create(['emp_code' => 42]);
         $employee->turnstiles()->attach($turnstile->id);
 
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $service->ingest($terminal, [
             'employeeNoString' => '42',
@@ -151,7 +154,7 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         $terminal = HikvisionTerminal::factory()->create();
         $employee = Employee::factory()->create(['emp_code' => 42]);
-        $service = new HikvisionEventIngestService();
+        $service = new HikvisionEventIngestService;
 
         $service->ingest($terminal, [
             'employeeNoString' => '42',
@@ -160,5 +163,80 @@ class HikvisionEventIngestServiceTest extends TestCase
         ], []);
 
         $this->assertNull($employee->fresh()->alcohol_skip_until);
+    }
+
+    public function test_emails_recipients_when_a_failed_test_is_at_or_above_the_threshold(): void
+    {
+        Mail::fake();
+        Setting::set('alcohol_notification_threshold', '20');
+        Setting::set('alcohol_notification_emails', 'security@example.com,hr@example.com');
+
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService;
+
+        $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'time' => now()->toIso8601String(),
+            'alcoholDetectionInfo' => ['result' => 'drinking', 'concentrationInfo' => ['concentrationValue' => 25]],
+        ], []);
+
+        Mail::assertQueued(AlcoholTestFailedMail::class, fn ($mail) => $mail->hasTo('security@example.com') && $mail->hasTo('hr@example.com'));
+    }
+
+    public function test_does_not_email_when_concentration_is_below_the_threshold(): void
+    {
+        Mail::fake();
+        Setting::set('alcohol_notification_threshold', '20');
+        Setting::set('alcohol_notification_emails', 'security@example.com');
+
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService;
+
+        $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'time' => now()->toIso8601String(),
+            'alcoholDetectionInfo' => ['result' => 'drinking', 'concentrationInfo' => ['concentrationValue' => 10]],
+        ], []);
+
+        Mail::assertNotQueued(AlcoholTestFailedMail::class);
+    }
+
+    public function test_does_not_email_when_no_recipients_are_configured(): void
+    {
+        Mail::fake();
+        Setting::set('alcohol_notification_threshold', '20');
+
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService;
+
+        $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'time' => now()->toIso8601String(),
+            'alcoholDetectionInfo' => ['result' => 'drinking', 'concentrationInfo' => ['concentrationValue' => 25]],
+        ], []);
+
+        Mail::assertNotQueued(AlcoholTestFailedMail::class);
+    }
+
+    public function test_does_not_email_on_a_passed_test(): void
+    {
+        Mail::fake();
+        Setting::set('alcohol_notification_threshold', '0');
+        Setting::set('alcohol_notification_emails', 'security@example.com');
+
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+        $service = new HikvisionEventIngestService;
+
+        $service->ingest($terminal, [
+            'employeeNoString' => '42',
+            'time' => now()->toIso8601String(),
+            'alcoholDetectionInfo' => ['result' => 'normal', 'concentrationInfo' => ['concentrationValue' => 0]],
+        ], []);
+
+        Mail::assertNotQueued(AlcoholTestFailedMail::class);
     }
 }

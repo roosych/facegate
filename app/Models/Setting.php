@@ -22,4 +22,18 @@ class Setting extends Model
     {
         return (int) static::get('alcohol_skip_grace_minutes', (string) config('alcohol.skip_grace_minutes_default'));
     }
+
+    /** Concentration (mg/100ml) at or above which a failed test triggers an email notification. */
+    public static function alcoholNotificationThreshold(): float
+    {
+        return (float) static::get('alcohol_notification_threshold', (string) config('alcohol.notification_threshold_default'));
+    }
+
+    /** @return array<int, string> */
+    public static function alcoholNotificationEmails(): array
+    {
+        $raw = static::get('alcohol_notification_emails', '');
+
+        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
 }

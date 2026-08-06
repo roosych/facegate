@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Mail\AlcoholTestFailedMail;
 use App\Models\AccessEvent;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\Setting;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Shared per-event processing for Hikvision access-control events — used by both the
@@ -81,7 +83,28 @@ class HikvisionEventIngestService
             $this->pushAlcoholSkipToLinkedTerminals($employee);
         }
 
+        if ($event->alcoholPassed() === false) {
+            $this->notifyOnFailedTest($event);
+        }
+
         return $event;
+    }
+
+    /**
+     * Email the configured recipients when a reading is at or above the notification
+     * threshold — a failed "normal" result alone doesn't necessarily mean it crossed the
+     * threshold the site actually wants to be alerted about.
+     */
+    private function notifyOnFailedTest(AccessEvent $event): void
+    {
+        $concentration = $event->alcoholConcentration();
+        $recipients = Setting::alcoholNotificationEmails();
+
+        if ($concentration === null || $recipients === [] || $concentration < Setting::alcoholNotificationThreshold()) {
+            return;
+        }
+
+        Mail::to($recipients)->send(new AlcoholTestFailedMail($event));
     }
 
     /**

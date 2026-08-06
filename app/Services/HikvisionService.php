@@ -640,6 +640,94 @@ class HikvisionService
     }
 
     /**
+     * Fetch one person's raw UserInfo record (name, doorRight, PersonInfoExtends, etc.) by
+     * employee number — used by the alcohol debug page to show a device-side snapshot.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function fetchUserInfo(string $empCode): ?array
+    {
+        try {
+            $response = $this->http()
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post('/ISAPI/AccessControl/UserInfo/Search?format=json', [
+                    'UserInfoSearchCond' => [
+                        'searchID' => (string) now()->timestamp,
+                        'searchResultPosition' => 0,
+                        'maxResults' => 1,
+                        'EmployeeNoList' => [['employeeNo' => $empCode]],
+                    ],
+                ]);
+
+            return $response->json('UserInfoSearch.UserInfo.0');
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Same lookup as fetchUserInfo(), but returns the exact response body the terminal sent —
+     * unparsed, unshaped — for handing raw evidence to Hikvision's firmware support.
+     */
+    public function rawUserInfo(string $empCode): ?string
+    {
+        try {
+            return $this->http()
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post('/ISAPI/AccessControl/UserInfo/Search?format=json', [
+                    'UserInfoSearchCond' => [
+                        'searchID' => (string) now()->timestamp,
+                        'searchResultPosition' => 0,
+                        'maxResults' => 1,
+                        'EmployeeNoList' => [['employeeNo' => $empCode]],
+                    ],
+                ])->body();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Raw AlcoholDetectionParams response body, exactly as the terminal sent it.
+     */
+    public function rawAlcoholDetectionParams(): ?string
+    {
+        try {
+            return $this->http()
+                ->get('/ISAPI/AccessControl/AccessControlAlcoholDetection/AlcoholDetectionParams?format=json')
+                ->body();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Raw AcsEvent search response body for a time window, exactly as the terminal sent it —
+     * a single one-shot search (no pagination), enough for a debug snapshot of "what just
+     * happened" rather than a full historical pull.
+     */
+    public function rawRecentEvents(Carbon $startTime, Carbon $endTime, int $maxResults = 30): ?string
+    {
+        try {
+            return $this->http()
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post('/ISAPI/AccessControl/AcsEvent?format=json', [
+                    'AcsEventCond' => [
+                        'searchID' => (string) now()->timestamp,
+                        'searchResultPosition' => 0,
+                        'maxResults' => $maxResults,
+                        'major' => 0,
+                        'minor' => 0,
+                        'startTime' => $startTime->toIso8601String(),
+                        'endTime' => $endTime->toIso8601String(),
+                    ],
+                ])->body();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * Fetch alcohol detection params from the terminal.
      * Returns null when the alcohol module is not connected or not supported.
      *
@@ -663,7 +751,7 @@ class HikvisionService
     /**
      * Push alcohol detection params to the terminal.
      *
-     * @param array<string, mixed> $params
+     * @param  array<string, mixed>  $params
      */
     public function setAlcoholDetectionParams(array $params): bool
     {
@@ -711,6 +799,13 @@ class HikvisionService
         $hostField = $isIp ? "<ipAddress>{$host}</ipAddress>" : "<hostName>{$host}</hostName>";
         $path = "/api/hikvision/{$this->terminal->id}/events/{$token}";
 
+        // Without an explicit SubscribeEvent block the terminal defaults to eventMode=all,
+        // pushing every door/system/admin event (and, on first enable, its entire backlog).
+        // minorEvent 0x1/0x4b/0x9a are successful card/face auth variants, 0x81d (2077) is the
+        // alcohol detection result — confirmed against this terminal's own AccessControllerEvent
+        // payloads. Everything else (door open/close, alarms, admin ops) is filtered out.
+        $minorEvents = '0x1,0x4b,0x9a,0x81d';
+
         // Unlike most other ISAPI endpoints in this class, httpHosts rejects a JSON body
         // (?format=json) with "badXmlFormat" — this one genuinely requires XML regardless.
         $xml = <<<XML
@@ -724,6 +819,20 @@ class HikvisionService
             {$hostField}
             <portNo>{$port}</portNo>
             <httpAuthenticationMethod>none</httpAuthenticationMethod>
+            <SubscribeEvent>
+            <heartbeat>30</heartbeat>
+            <eventMode>list</eventMode>
+            <EventList>
+            <Event>
+            <type>AccessControllerEvent</type>
+            <minorAlarm></minorAlarm>
+            <minorException></minorException>
+            <minorOperation></minorOperation>
+            <minorEvent>{$minorEvents}</minorEvent>
+            <pictureURLType>binary</pictureURLType>
+            </Event>
+            </EventList>
+            </SubscribeEvent>
             </HttpHostNotification>
             XML;
 
@@ -747,13 +856,13 @@ class HikvisionService
      * @var array<string, int>
      */
     private const ALCOHOL_WEEK_DAYS = [
-        'monday'    => 1,
-        'tuesday'   => 2,
+        'monday' => 1,
+        'tuesday' => 2,
         'wednesday' => 3,
-        'thursday'  => 4,
-        'friday'    => 5,
-        'saturday'  => 6,
-        'sunday'    => 7,
+        'thursday' => 4,
+        'friday' => 5,
+        'saturday' => 6,
+        'sunday' => 7,
     ];
 
     /**
@@ -793,7 +902,7 @@ class HikvisionService
                     }
                     $periods[] = [
                         'beginTime' => $range['startTime'] ?? '08:00',
-                        'endTime'   => $range['endTime'] ?? '18:00',
+                        'endTime' => $range['endTime'] ?? '18:00',
                     ];
                 }
 
@@ -821,7 +930,7 @@ class HikvisionService
      * from the request entirely — the terminal's own UI only shows a day as off when
      * it's absent from weekPlanCfg, not when sent with alcoholDetEnabled:false.
      *
-     * @param array<string, array{enabled: bool, periods: array<int, array{beginTime: string, endTime: string}>}> $plan
+     * @param  array<string, array{enabled: bool, periods: array<int, array{beginTime: string, endTime: string}>}>  $plan
      */
     public function setAlcoholWeekPlan(array $plan): bool
     {
@@ -838,10 +947,10 @@ class HikvisionService
             $weekPlanCfg[] = [
                 'dayOfWeek' => $dayNumber,
                 'timeRange' => array_map(fn (array $period) => [
-                    'startTime'         => $period['beginTime'],
-                    'endTime'           => $period['endTime'],
+                    'startTime' => $period['beginTime'],
+                    'endTime' => $period['endTime'],
                     'alcoholDetEnabled' => true,
-                    'alcoholDetTimes'   => 1,
+                    'alcoholDetTimes' => 1,
                 ], $periods),
             ];
         }
@@ -850,8 +959,8 @@ class HikvisionService
             $response = $this->http()
                 ->withHeaders(['Content-Type' => 'application/json'])
                 ->put('/ISAPI/AccessControl/AccessControlAlcoholDetectionPlan/ModifyAlcoholWeekPlan?format=json', [
-                    'weekPlanID'  => self::ALCOHOL_WEEK_PLAN_ID,
-                    'enabled'     => true,
+                    'weekPlanID' => self::ALCOHOL_WEEK_PLAN_ID,
+                    'enabled' => true,
                     'weekPlanCfg' => $weekPlanCfg,
                 ]);
 
@@ -933,13 +1042,13 @@ class HikvisionService
                     ->withHeaders(['Content-Type' => 'application/json'])
                     ->post('/ISAPI/AccessControl/AcsEvent?format=json', [
                         'AcsEventCond' => [
-                            'searchID'             => (string) now()->timestamp,
+                            'searchID' => (string) now()->timestamp,
                             'searchResultPosition' => $position,
-                            'maxResults'           => $batchSize,
-                            'major'                => 0,
-                            'minor'                => 0,
-                            'startTime'            => $startTime->toIso8601String(),
-                            'endTime'              => $endTime->toIso8601String(),
+                            'maxResults' => $batchSize,
+                            'major' => 0,
+                            'minor' => 0,
+                            'startTime' => $startTime->toIso8601String(),
+                            'endTime' => $endTime->toIso8601String(),
                         ],
                     ]);
 
@@ -947,9 +1056,9 @@ class HikvisionService
                     break;
                 }
 
-                $data   = $response->json('AcsEvent') ?? [];
-                $batch  = $data['InfoList'] ?? [];
-                $all    = array_merge($all, $batch);
+                $data = $response->json('AcsEvent') ?? [];
+                $batch = $data['InfoList'] ?? [];
+                $all = array_merge($all, $batch);
                 $status = $data['responseStatusStrg'] ?? 'NO MORE RESULTS';
                 $position += count($batch);
 
@@ -960,7 +1069,7 @@ class HikvisionService
         } catch (Throwable $e) {
             Log::error('Hikvision fetchAccessEvents failed', [
                 'terminal' => $this->terminal->name,
-                'error'    => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
         }
 

@@ -33,6 +33,45 @@
         @enderror
     </div>
 
+    <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
+        <form method="POST" action="{{ route('alcohol.notifications') }}" class="flex items-end gap-3">
+            @csrf
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Notify threshold (mg/100ml)</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    name="notification_threshold"
+                    value="{{ old('notification_threshold', $notificationThreshold) }}"
+                    min="0"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Notify emails (comma-separated)</label>
+                <input
+                    type="text"
+                    name="notification_emails"
+                    value="{{ old('notification_emails', $notificationEmails) }}"
+                    placeholder="security@example.com, hr@example.com"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+            </div>
+            <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                Save
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 mt-2">
+            A failed test at or above this concentration emails everyone listed.
+        </p>
+        @error('notification_threshold')
+            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+        @enderror
+        @error('notification_emails')
+            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+        @enderror
+    </div>
+
     <div class="flex items-center justify-between mb-3">
         <p class="text-sm text-gray-500">{{ $rows->count() }} employee(s) required to test</p>
     </div>
@@ -59,6 +98,9 @@
                             <a href="{{ route('employees.show', $employee) }}" class="text-indigo-600 hover:text-indigo-800 font-medium">
                                 {{ $employee->full_name }}
                             </a>
+                            <a href="{{ route('alcohol.debug', $employee) }}" class="ml-2 text-xs text-gray-400 hover:text-gray-600 underline">
+                                debug
+                            </a>
                         </td>
 
                         <td class="px-4 py-3 text-sm">
@@ -79,15 +121,23 @@
                         </td>
 
                         <td class="px-4 py-3 text-sm">
-                            @if($skipActive)
-                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-full">
-                                    passed — until {{ $employee->alcohol_skip_until->format('d.m.Y H:i') }}
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded-full">
-                                    must test
-                                </span>
-                            @endif
+                            <div class="flex items-center gap-2">
+                                @if($skipActive)
+                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-full">
+                                        passed — until {{ $employee->alcohol_skip_until->format('d.m.Y H:i') }}
+                                    </span>
+                                    <form method="POST" action="{{ route('alcohol.clear-skip', $employee) }}">
+                                        @csrf
+                                        <button type="submit" class="text-xs text-gray-500 hover:text-red-600 underline">
+                                            clear
+                                        </button>
+                                    </form>
+                                @else
+                                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200 rounded-full">
+                                        must test
+                                    </span>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
