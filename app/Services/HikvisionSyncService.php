@@ -16,6 +16,9 @@ class HikvisionSyncService
 
     private const LOG_FLUSH_THRESHOLD = 200;
 
+    /** Signature standing in for "there is no photo to push at all". */
+    private const NO_LOCAL_PHOTO = 'no-local-photo';
+
     /** @var array<int, array<string, mixed>> */
     private array $pendingLogs = [];
 
@@ -93,6 +96,12 @@ class HikvisionSyncService
         $personsFailed = [];
         $facesFailed = [];
         $cardsFailed = [];
+
+        // emp_code => photo signature that already failed to reach this terminal. Carried
+        // across runs so a permanently rejected photo is neither retried nor re-logged until
+        // the photo changes; anything that resolves simply stops being written back.
+        $knownFaceProblems = $terminal->sync_stats['face_problems'] ?? [];
+        $faceProblems = [];
 
         foreach ($employees as $i => $employee) {
             if ($i % 10 === 0 || $i === $total - 1) {
@@ -172,16 +181,26 @@ class HikvisionSyncService
                         // has a real photo, so don't count it as a genuine sync failure.
                         $isGuest = true;
                     } else {
-                        $this->log($employee->id, $terminal->id, 'hikvision_face', 'error', 'No photo in local DB — skipped');
+                        $this->logFaceProblem($employee, $terminal, self::NO_LOCAL_PHOTO, 'No photo in local DB — skipped', $knownFaceProblems, $faceProblems);
                     }
                 } else {
-                    try {
-                        $service->uploadFace($employee);
-                        $this->log($employee->id, $terminal->id, 'hikvision_face', 'success', 'Face uploaded');
-                        $terminalFaces[$empCodeStr] = true;
-                        $hasFace = true;
-                    } catch (Throwable $e) {
-                        $this->log($employee->id, $terminal->id, 'hikvision_face', 'error', $e->getMessage());
+                    // Retrying a photo the terminal has already refused just fails the same way
+                    // on every run: 33 employees produced 825 identical error rows in six hours
+                    // and 66 wasted uploads per pass. Attempt it again only once the photo
+                    // itself changes — which is the only thing that could alter the outcome.
+                    $photoSignature = $this->photoSignature($employee);
+
+                    if (($knownFaceProblems[$empCodeStr] ?? null) === $photoSignature) {
+                        $faceProblems[$empCodeStr] = $photoSignature;
+                    } else {
+                        try {
+                            $service->uploadFace($employee);
+                            $this->log($employee->id, $terminal->id, 'hikvision_face', 'success', 'Face uploaded');
+                            $terminalFaces[$empCodeStr] = true;
+                            $hasFace = true;
+                        } catch (Throwable $e) {
+                            $this->logFaceProblem($employee, $terminal, $photoSignature, $e->getMessage(), $knownFaceProblems, $faceProblems);
+                        }
                     }
                 }
 
@@ -287,6 +306,7 @@ class HikvisionSyncService
                 'cards_added' => $results['cards'],
                 'cards_not_added' => $results['synced'] - $results['cards'],
                 'cards_failed' => $cardsFailed,
+                'face_problems' => $faceProblems,
                 'removal_skipped' => $results['removalSkipped'],
                 'alcohol_enabled' => $alcoholEnabled,
                 'alcohol_required' => $results['alcoholRequired'],
@@ -398,6 +418,43 @@ class HikvisionSyncService
      * @param  array<int, array<string, mixed>>  $allPersons
      * @param  array<int, string>  $keepEmpCodes
      */
+    /**
+     * Identifies the photo we are about to push, so a face problem can be remembered against
+     * the exact image that caused it. Falls back to the path when the file can't be hashed.
+     */
+    private function photoSignature(Employee $employee): string
+    {
+        $path = storage_path('app/'.$employee->photo_path);
+
+        return is_readable($path) ? (md5_file($path) ?: $employee->photo_path) : (string) $employee->photo_path;
+    }
+
+    /**
+     * Record a face problem, logging it only when it is new or the photo has changed.
+     *
+     * Some of these never resolve on their own — the terminal refuses a handful of photos with
+     * 'alreadyExistThisFace' no matter what is sent, including under a brand-new employee
+     * number — so logging every pass buried genuinely new failures under hundreds of repeats.
+     *
+     * @param  array<string, string>  $known  signatures carried over from the previous run
+     * @param  array<string, string>  $current  signatures being collected for the next one
+     */
+    private function logFaceProblem(
+        Employee $employee,
+        HikvisionTerminal $terminal,
+        string $signature,
+        string $message,
+        array $known,
+        array &$current,
+    ): void {
+        $empCodeStr = (string) $employee->emp_code;
+        $current[$empCodeStr] = $signature;
+
+        if (($known[$empCodeStr] ?? null) !== $signature) {
+            $this->log($employee->id, $terminal->id, 'hikvision_face', 'error', $message);
+        }
+    }
+
     /**
      * Why this run's employee roster can't be trusted to drive deletions, or null when it can.
      *
