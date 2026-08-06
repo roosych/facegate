@@ -19,6 +19,12 @@ use Throwable;
 class HikvisionService
 {
     /**
+     * Value stored in the person's PersonInfoExtends to exempt them from alcohol testing.
+     * Read back verbatim by UserInfo/Search, so callers can compare before writing.
+     */
+    public const ALCOHOL_SKIP_FLAG = 'skip_alcohol';
+
+    /**
      * How many times to re-ask for a search page that came back empty while the device still
      * claims more rows. See searchAllPages().
      */
@@ -883,7 +889,7 @@ class HikvisionService
                             'beginTime' => now()->startOfDay()->format('Y-m-d\TH:i:s'),
                             'endTime' => now()->addYears(10)->format('Y-m-d\TH:i:s'),
                         ],
-                        'PersonInfoExtends' => [['value' => $skip ? 'skip_alcohol' : '']],
+                        'PersonInfoExtends' => [['value' => $skip ? self::ALCOHOL_SKIP_FLAG : '']],
                     ],
                 ]);
 

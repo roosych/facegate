@@ -202,8 +202,18 @@ class HikvisionSyncService
                     // Grace period from a recent pass overrides the group requirement — don't
                     // clobber an active skip with "must test" mid-window.
                     $mustTest = isset($alcoholRequired[$employee->rusguard_uuid]) && ! $employee->isAlcoholSkipActive();
+                    $desiredFlag = $mustTest ? '' : HikvisionService::ALCOHOL_SKIP_FLAG;
 
-                    if ($service->setAlcoholSkip($empCodeStr, ! $mustTest)) {
+                    // Compare before writing, like the person/card/face branches above. The
+                    // flag comes back in the person list already prefetched for this run, and
+                    // it survives the UserInfo/SetUp that addEmployee() issues (that call omits
+                    // the field and the terminal keeps it), so the prefetched value is still
+                    // accurate here. Writing unconditionally cost one PUT per employee on every
+                    // run — on 668 people that alone was ~137s of an otherwise no-op sync, and
+                    // it multiplied by terminal count.
+                    $flagMatches = $this->alcoholFlagOf($terminalPerson) === $desiredFlag;
+
+                    if ($flagMatches || $service->setAlcoholSkip($empCodeStr, ! $mustTest)) {
                         $mustTest ? $results['alcoholRequired']++ : $results['alcoholSkipped']++;
                     } else {
                         $results['alcoholFailed']++;
@@ -371,6 +381,20 @@ class HikvisionSyncService
      * @param  array<int, array<string, mixed>>  $allPersons
      * @param  array<int, string>  $keepEmpCodes
      */
+    /**
+     * Alcohol-skip flag currently stored for a person on the terminal, as returned by
+     * UserInfo/Search. Null when the person isn't on the terminal yet or the field is absent,
+     * which never equals a desired value and so always forces a write.
+     *
+     * @param  array<string, mixed>|null  $terminalPerson
+     */
+    private function alcoholFlagOf(?array $terminalPerson): ?string
+    {
+        $value = $terminalPerson['PersonInfoExtends'][0]['value'] ?? null;
+
+        return is_string($value) ? $value : null;
+    }
+
     private function removeUnlinkedPersons(HikvisionService $service, HikvisionTerminal $terminal, array $allPersons, array $keepEmpCodes): int
     {
         $keep = array_flip($keepEmpCodes);
