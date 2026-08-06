@@ -307,7 +307,7 @@ class SyncService
      * Pull all access points with employees from RusGuard in one pass,
      * upsert turnstiles and employees into the local database.
      *
-     * @return array{points: int, synced: int, errors: int}
+     * @return array{points: int, synced: int, errors: int, deactivated: int, pointsDeactivated: int}
      */
     public const SYNC_STATUS_KEY = 'sync_all_status';
 
@@ -400,6 +400,9 @@ class SyncService
         }
 
         $totals['deactivated'] = $this->deactivateEmployeesGoneFromRusGuard();
+        $totals['pointsDeactivated'] = $this->deactivateTurnstilesGoneFromRusGuard(
+            array_column($pointsWithEmployees, 'driverId')
+        );
 
         Cache::put(self::SYNC_STATUS_KEY, [
             'status' => 'done',
@@ -413,6 +416,45 @@ class SyncService
         ], now()->addHour());
 
         return $totals;
+    }
+
+    /**
+     * Turnstiles are only ever created or refreshed from what RusGuard currently returns, so a
+     * point deleted there just stops appearing and its local row stayed active forever — the
+     * Check Points page listed them as "in local but not in RusGuard" and someone had to
+     * deactivate each one by hand.
+     *
+     * Deactivate rather than delete: access events reference these rows, a Hikvision terminal
+     * may still be bound to one, and a point that reappears in RusGuard is reactivated anyway
+     * by the updateOrCreate() above. Employee links are deliberately left in place — detaching
+     * them would empty $terminal->turnstile->employees, and the terminal sync would then read
+     * that as "nobody belongs here" and wipe every person off the device.
+     *
+     * @param  array<int, string>  $rusGuardDriverIds  driverIds RusGuard returned this run
+     */
+    private function deactivateTurnstilesGoneFromRusGuard(array $rusGuardDriverIds): int
+    {
+        // An empty list means RusGuard returned nothing at all — an outage or a failed query,
+        // not "every access point was deleted". Deactivating the lot on that basis would take
+        // the whole installation offline.
+        if ($rusGuardDriverIds === []) {
+            return 0;
+        }
+
+        $known = array_flip(array_map('strtolower', $rusGuardDriverIds));
+
+        $orphans = Turnstile::where('is_active', true)
+            ->whereNotNull('rusguard_access_point_id')
+            ->get(['id', 'rusguard_access_point_id'])
+            ->filter(fn (Turnstile $turnstile): bool => ! isset($known[strtolower($turnstile->rusguard_access_point_id)]));
+
+        if ($orphans->isEmpty()) {
+            return 0;
+        }
+
+        Turnstile::whereIn('id', $orphans->pluck('id'))->update(['is_active' => false]);
+
+        return $orphans->count();
     }
 
     /**
