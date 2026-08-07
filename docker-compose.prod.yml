@@ -1,0 +1,94 @@
+# Production stack for a server we share with other applications.
+#
+# It is a full definition, not an override of docker-compose.yml: Compose merges `ports` lists
+# instead of replacing them, so an override could add a published port but never remove one.
+#
+# Two things differ from local, and both are about not disturbing the host's own web stack:
+#
+#   - nginx answers on 8090. Ports 80 and 443 belong to the host's own nginx, and 8080 was already
+#     taken. It binds all interfaces on purpose — the terminal has DNS disabled and reaches the
+#     webhook by the server's IP address, so localhost-only would leave push dead.
+#   - Postgres publishes nothing. The other services reach it over the compose network; use
+#     `docker compose exec postgres psql` from the host when you need a shell.
+#
+# Usage: docker compose -f docker-compose.prod.yml up -d
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facegate_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    networks:
+      - facegate_network
+    depends_on:
+      - postgres
+
+  nginx:
+    image: nginx:alpine
+    container_name: facegate_nginx
+    restart: unless-stopped
+    ports:
+      - "8090:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - facegate_network
+    depends_on:
+      - app
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facegate_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    # --max-time recycles the worker hourly so it picks up deployed code instead of serving
+    # whatever was loaded when the container started. Restart policy brings it straight back.
+    command: php artisan queue:work --sleep=3 --timeout=3600 --max-time=3600
+    volumes:
+      - .:/var/www
+    networks:
+      - facegate_network
+    depends_on:
+      - postgres
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: facegate_scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www
+    networks:
+      - facegate_network
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: facegate_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-zkbio}
+      POSTGRES_USER: ${DB_USERNAME:-zkbio}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - facegate_network
+
+networks:
+  facegate_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
