@@ -37,7 +37,6 @@
                             <span class="text-gray-600">{{ $event->verify_type }}</span>
                             <span class="text-xs text-gray-400">{{ $event->event_time->format('d.m.y H:i') }}</span>
                         </div>
-                        <div class="text-xs text-gray-400">{{ $event->device?->name ?? 'Unknown device' }}</div>
                     </div>
                 @empty
                     <p class="text-sm text-gray-400">No events.</p>

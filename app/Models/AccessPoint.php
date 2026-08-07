@@ -5,25 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
-#[Fillable(['name', 'rusguard_access_point_id', 'rusguard_access_point_name', 'device_type', 'enter_device_id', 'exit_device_id', 'is_active'])]
+#[Fillable(['name', 'rusguard_access_point_id', 'rusguard_access_point_name', 'device_type', 'is_active'])]
 class AccessPoint extends Model
 {
     use HasFactory;
-
-    public function enterDevice(): BelongsTo
-    {
-        return $this->belongsTo(Device::class, 'enter_device_id');
-    }
-
-    public function exitDevice(): BelongsTo
-    {
-        return $this->belongsTo(Device::class, 'exit_device_id');
-    }
 
     public function employees(): BelongsToMany
     {

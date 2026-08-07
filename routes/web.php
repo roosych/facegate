@@ -5,7 +5,6 @@ use App\Http\Controllers\AccessPointController;
 use App\Http\Controllers\AlcoholDebugController;
 use App\Http\Controllers\AlcoholStatusController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\HikvisionSyncController;
 use App\Http\Controllers\HikvisionTerminalController;
@@ -33,12 +32,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/access-points/{accessPoint}/rusguard-employees', [AccessPointController::class, 'rusguardEmployees'])->name('access-points.rusguard-employees');
     Route::get('/access-points/{accessPoint}', [AccessPointController::class, 'show'])->name('access-points.show');
 
-    Route::get('/devices', [DeviceController::class, 'index'])->name('devices.index');
-    Route::get('/devices/create', [DeviceController::class, 'create'])->name('devices.create');
-    Route::post('/devices', [DeviceController::class, 'store'])->name('devices.store');
-    Route::post('/devices/sync-from-zkbio', [DeviceController::class, 'syncFromZKBio'])->name('devices.sync-from-zkbio');
-    Route::post('/devices/{device}/push-from-access-point', [DeviceController::class, 'pushFromAccessPoint'])->name('devices.push-from-access-point');
-
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/employees/{employee}/photo', [EmployeeController::class, 'photo'])->name('employees.photo');
     Route::get('/employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
@@ -60,7 +53,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sync/status', [SyncController::class, 'syncStatus'])->name('sync.status');
     Route::post('/sync/access-point/{accessPoint}', [SyncController::class, 'syncAccessPoint'])->name('sync.access-point');
     Route::get('/sync/access-point/{accessPoint}/status', [SyncController::class, 'syncAccessPointStatus'])->name('sync.access-point.status');
-    Route::post('/sync/access-point/{accessPoint}/push', [SyncController::class, 'pushAccessPoint'])->name('sync.push-access-point');
     Route::post('/sync/all', [SyncController::class, 'syncAll'])->name('sync.all');
 
     Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');

@@ -1,15 +1,11 @@
 # ZKBio — синхронизация СКУД
 
 Laravel 13 / PHP 8.4. Забирает сотрудников из **RusGuard** и раскладывает их по физическим
-терминалам — **Hikvision** (напрямую по ISAPI) и **ZKTeco** (через ZKBio CVAccess). Плюс
-кастомная надстройка: контроль алкотестирования на проходной.
+терминалам **Hikvision** (напрямую по ISAPI). Плюс кастомная надстройка: контроль
+алкотестирования на проходной.
 
 RusGuard — источник правды. Приложение ничего не решает само: оно приводит состояние
 терминалов к тому, что сейчас записано в RusGuard, и делает это непрерывно.
-
-Основная ветка сейчас — Hikvision: она под расписанием, с push'ом событий и алкотестами. Ветка
-ZKT рабочая, но в текущей конфигурации не активна — её пункты убраны из меню, автоматического
-расписания у неё нет, запускается вручную через `facegate:sync`.
 
 ---
 
@@ -19,7 +15,6 @@ ZKT рабочая, но в текущей конфигурации не акт�
 flowchart LR
     RG[(RusGuard<br/>MS SQL)] -->|"SELECT: сотрудники,<br/>фото, карты, точки доступа"| APP
     APP[(Локальная база<br/>PostgreSQL)] -->|"ISAPI: person + card + face"| HIK[Hikvision<br/>терминал]
-    APP -->|"REST: ZKBio CVAccess"| ZKT[ZKTeco<br/>терминал]
     HIK -->|"push событий прохода<br/>и алкотестов"| APP
 ```
 
@@ -69,11 +64,10 @@ RusGuard живёт снаружи и в docker-compose не входит — к
 | Класс | Ответственность |
 |---|---|
 | `RusGuardDatabaseService` | Чтение из MS SQL RusGuard: сотрудники, фото, карты, точки, журнал аудита, группы алкотестирования |
-| `SyncService` | RusGuard → локальная база. Плюс синк на ZKT через ZKBio |
+| `SyncService` | RusGuard → локальная база |
 | `HikvisionService` | Голый ISAPI: персоны, карты, лица, настройка вебхука, параметры алкотестера |
 | `HikvisionSyncService` | Локальная база → конкретный терминал Hikvision |
 | `HikvisionEventIngestService` | Приём и дедупликация событий с терминала |
-| `ZKBioService` | REST ZKBio CVAccess для ZKT-терминалов |
 
 `RusGuardService` / `EmployeeService` — SOAP-клиент к RusGuard. Рабочий, но в текущем потоке
 данные берутся напрямую из MS SQL: быстрее и без ограничений WSDL.
@@ -84,7 +78,6 @@ RusGuard живёт снаружи и в docker-compose не входит — к
 - `employee_keys` — карты (у человека их может быть несколько)
 - `access_points` — точки доступа, модель `AccessPoint`
 - `hikvision_terminals` — терминалы, `sync_stats` хранит итог последнего синка, `last_push_at` — когда терминал последний раз выходил на связь
-- `devices` — ZKT-терминалы
 - `access_events` — события с алкотестом
 - `sync_logs` — построчный журнал действий синка (хранится 30 дней)
 - `sync_runs` — по строке на каждый запуск синка: длительность, счётчики, чем запущен (хранится 90 дней)
@@ -214,11 +207,6 @@ MAIL_PORT=
 MAIL_USERNAME=
 MAIL_PASSWORD=
 MAIL_FROM_ADDRESS=
-
-# ZKT / ZKBio CVAccess — только если используются ZKT-терминалы
-ZKBIO_URL=
-ZKBIO_USERNAME=
-ZKBIO_PASSWORD=
 ```
 
 Пароль постгреса задан в двух местах — в `.env` и в `docker-compose.yml`. Менять надо оба.
@@ -324,7 +312,6 @@ php artisan hikvision:fetch-events --minutes=60 # добрать события 
 php artisan hikvision:configure-webhook [id]   # прописать вебхук в терминал
 php artisan rusguard:poll-audit                # разово проверить журнал RusGuard
 php artisan alcohol:clear-expired-skip         # снять истёкшие отсрочки
-php artisan facegate:sync --access-point=<id>  # синк на ZKT через ZKBio
 ```
 
 ### Если что-то не работает

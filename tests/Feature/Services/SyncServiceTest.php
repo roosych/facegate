@@ -6,7 +6,6 @@ use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use App\Services\SyncService;
-use App\Services\ZKBioService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
@@ -42,7 +41,7 @@ class SyncServiceTest extends TestCase
             '22222222-2222-2222-2222-222222222222',
         ]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
 
         $result = $syncService->syncAllFromRusGuard();
 
@@ -78,7 +77,7 @@ class SyncServiceTest extends TestCase
         $rusGuardDb->shouldReceive('getEmployeeKeys')->once()->andReturn([]);
         $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->andReturn([$uuid]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(0, $result['errors']);
@@ -99,7 +98,7 @@ class SyncServiceTest extends TestCase
         // The employee no longer shows up in RusGuard's active roster at all — fired/excluded.
         $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->once()->andReturn([]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(1, $result['deactivated']);
@@ -131,7 +130,7 @@ class SyncServiceTest extends TestCase
         $kept = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-live', 'is_active' => true]);
         $gone = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-deleted', 'is_active' => true]);
 
-        $syncService = new SyncService($this->rusGuardReturningPoints(['point-live']), app(ZKBioService::class));
+        $syncService = new SyncService($this->rusGuardReturningPoints(['point-live']));
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(1, $result['pointsDeactivated']);
@@ -156,7 +155,7 @@ class SyncServiceTest extends TestCase
         // else in the sync has a reason to touch their links.
         $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->andReturn([$employee->rusguard_uuid]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $syncService->syncAllFromRusGuard();
 
         // Detaching here would leave a Hikvision terminal bound to this point seeing an empty
@@ -173,7 +172,7 @@ class SyncServiceTest extends TestCase
         $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([]);
         $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->andReturn([]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(0, $result['pointsDeactivated']);
@@ -189,8 +188,7 @@ class SyncServiceTest extends TestCase
         ]);
 
         $syncService = new SyncService(
-            $this->rusGuardReturningPoints(['AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE']),
-            app(ZKBioService::class)
+            $this->rusGuardReturningPoints(['AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE'])
         );
         $result = $syncService->syncAllFromRusGuard();
 
@@ -208,7 +206,7 @@ class SyncServiceTest extends TestCase
         $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([]);
         $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->once()->andReturn(['44444444-4444-4444-4444-444444444444']);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(0, $result['deactivated']);
@@ -230,7 +228,7 @@ class SyncServiceTest extends TestCase
         $rusGuardDb->shouldReceive('getEmployeePhoto')->andReturn(null);
         $rusGuardDb->shouldReceive('getEmployeeKeys')->andReturn([]);
 
-        $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
+        $syncService = new SyncService($rusGuardDb);
         $syncService->syncEmployeesForAccessPoint($accessPoint->id);
 
         $scoped = Cache::get(SyncService::SYNC_STATUS_KEY.'_'.$accessPoint->id);

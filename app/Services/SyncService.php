@@ -13,10 +13,7 @@ use Throwable;
 
 class SyncService
 {
-    public function __construct(
-        private RusGuardDatabaseService $rusGuardDb,
-        private ZKBioService $zkBio
-    ) {}
+    public function __construct(private RusGuardDatabaseService $rusGuardDb) {}
 
     /**
      * @return array<string, mixed>
@@ -36,7 +33,7 @@ class SyncService
      */
     private function pullAccessPointFromRusGuard(int $accessPointId): array
     {
-        $accessPoint = AccessPoint::with(['enterDevice', 'exitDevice'])->findOrFail($accessPointId);
+        $accessPoint = AccessPoint::findOrFail($accessPointId);
 
         $deviceType = $this->rusGuardDb->getAccessPointDeviceType($accessPoint->rusguard_access_point_id);
         if ($deviceType !== null && $deviceType !== $accessPoint->device_type) {
@@ -79,7 +76,7 @@ class SyncService
                 $results['employees'][] = $employee->id;
             } catch (Throwable $e) {
                 $results['errors']++;
-                $this->log(null, null, 'sync_rusguard', 'error', $e->getMessage());
+                $this->log(null, 'sync_rusguard', 'error', $e->getMessage());
             }
         }
 
@@ -103,7 +100,6 @@ class SyncService
     /**
      * Pull one employee from RusGuard and save to local DB only.
      * Skips writes when name, photo and keys are all unchanged.
-     * No ZKBio interaction — use pushAccessPointToDevices() for that.
      *
      * @param  array{uuid: string, fio: string}  $rgEmployee
      */
@@ -185,136 +181,10 @@ class SyncService
                 }
             }
         } catch (Throwable $e) {
-            $this->log($employee->id, null, 'sync_keys', 'error', $e->getMessage());
+            $this->log($employee->id, 'sync_keys', 'error', $e->getMessage());
         }
 
         return $employee;
-    }
-
-    /**
-     * Push all employees of an access point to its ZKBio devices.
-     * Reads only from local DB — no RusGuard calls.
-     *
-     * @return array{synced: int, errors: int}
-     */
-    public function pushAccessPointToDevices(int $accessPointId): array
-    {
-        $accessPoint = AccessPoint::with(['enterDevice', 'exitDevice', 'employees.keys'])->findOrFail($accessPointId);
-
-        $devices = array_filter([$accessPoint->enterDevice, $accessPoint->exitDevice]);
-        $results = ['synced' => 0, 'errors' => 0];
-        $total = $accessPoint->employees->count();
-        $pointName = $accessPoint->rusguard_access_point_name ?: $accessPoint->name;
-
-        Cache::put(self::SYNC_STATUS_KEY, [
-            'status' => 'running',
-            'current' => $pointName,
-            'done' => 0,
-            'total' => 0,
-            'emp_done' => 0,
-            'emp_total' => $total,
-            'synced' => 0,
-            'errors' => 0,
-        ], now()->addHour());
-
-        $jwtToken = null;
-        $session = null;
-
-        foreach ($accessPoint->employees as $i => $employee) {
-            Cache::put(self::SYNC_STATUS_KEY, [
-                'status' => 'running',
-                'current' => $pointName,
-                'done' => 0,
-                'total' => 0,
-                'emp_done' => $i,
-                'emp_total' => $total,
-                'synced' => $results['synced'],
-                'errors' => $results['errors'],
-            ], now()->addHour());
-
-            try {
-                // Create in ZKBio if not registered yet
-                if ($employee->zkbio_id === null) {
-                    $jwtToken ??= $this->zkBio->getJwtToken();
-                    $cardNo = $employee->keys->where('type', 'card')->first()?->value;
-                    $zkbioId = $this->zkBio->createEmployee([
-                        'emp_code' => (string) $employee->emp_code,
-                        'first_name' => $employee->first_name,
-                        'last_name' => $employee->last_name ?? '',
-                        'department' => (int) config('zkbio.department_id'),
-                        'area' => [(int) config('zkbio.area_id')],
-                        'card_no' => $cardNo !== null ? $this->formatCardNo($cardNo) : '',
-                    ]);
-
-                    $employee->zkbio_id = $zkbioId;
-                    $employee->save();
-
-                    $this->log($employee->id, null, 'create_employee', 'success', 'Created in ZKBio');
-                }
-
-                // Upload bio photo if employee has one
-                $photoPath = $employee->photo_path ? storage_path('app/'.$employee->photo_path) : null;
-
-                if ($employee->zkbio_id !== null && $photoPath !== null && file_exists($photoPath)) {
-                    $session ??= $this->zkBio->getBrowserSession();
-
-                    $uploaded = $this->zkBio->uploadBioPhoto($employee->zkbio_id, [
-                        'emp_code' => $employee->emp_code,
-                        'first_name' => $employee->first_name,
-                        'last_name' => $employee->last_name ?? '',
-                        'card_no' => $this->formatCardNo($employee->keys->where('type', 'card')->first()?->value ?? ''),
-                    ], $photoPath, $session);
-
-                    $this->log($employee->id, null, 'upload_photo', $uploaded ? 'success' : 'error',
-                        $uploaded ? 'Photo uploaded' : 'Photo upload failed'
-                    );
-
-                    if ($uploaded) {
-                        $approved = $this->zkBio->approveBioPhoto($employee->emp_code, $session);
-
-                        $this->log($employee->id, null, 'approve_photo', $approved ? 'success' : 'error',
-                            $approved ? 'Photo approved' : 'Photo approval failed'
-                        );
-                    }
-                }
-
-                // Push to each device
-                foreach ($devices as $device) {
-                    if ($employee->zkbio_id === null) {
-                        continue;
-                    }
-
-                    $jwtToken ??= $this->zkBio->getJwtToken();
-                    $synced = $this->zkBio->syncEmployeeToDevice($employee->zkbio_id, $jwtToken);
-
-                    $this->log($employee->id, $device->id, 'sync_device', $synced ? 'success' : 'error',
-                        $synced ? 'Synced to '.$device->name : 'Failed to sync to '.$device->name
-                    );
-                }
-
-                $results['synced']++;
-            } catch (Throwable $e) {
-                $results['errors']++;
-                $this->log($employee->id, null, 'push_device', 'error', $e->getMessage());
-            }
-        }
-
-        if ($session !== null && file_exists($session['cookieJar'])) {
-            unlink($session['cookieJar']);
-        }
-
-        Cache::put(self::SYNC_STATUS_KEY, [
-            'status' => 'done',
-            'current' => '',
-            'done' => 0,
-            'total' => 0,
-            'emp_done' => $total,
-            'emp_total' => $total,
-            'synced' => $results['synced'],
-            'errors' => $results['errors'],
-        ], now()->addHour());
-
-        return $results;
     }
 
     /**
@@ -407,7 +277,7 @@ class SyncService
                     } catch (Throwable $e) {
                         $employee = null;
                         $totals['errors']++;
-                        $this->log(null, null, 'sync_rusguard', 'error', $e->getMessage());
+                        $this->log(null, 'sync_rusguard', 'error', $e->getMessage());
                     }
 
                     $employeeCache[$uuid] = $employee;
@@ -549,11 +419,10 @@ class SyncService
         return '0'.$cardNo;
     }
 
-    private function log(?int $employeeId, ?int $deviceId, string $action, string $status, ?string $message = null): void
+    private function log(?int $employeeId, string $action, string $status, ?string $message = null): void
     {
         SyncLog::create([
             'employee_id' => $employeeId,
-            'device_id' => $deviceId,
             'action' => $action,
             'status' => $status,
             'message' => $message,

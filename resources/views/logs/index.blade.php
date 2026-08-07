@@ -12,7 +12,6 @@
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Device</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Message</th>
@@ -31,7 +30,6 @@
                                 <span class="text-gray-400">—</span>
                             @endif
                         </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ $log->device?->name ?? '—' }}</td>
                         <td class="px-4 py-3 text-sm">
                             <span class="font-mono text-xs text-gray-700">{{ str_replace('_', ' ', $log->action) }}</span>
                         </td>
@@ -48,7 +46,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">No sync logs yet.</td>
+                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">No sync logs yet.</td>
                     </tr>
                 @endforelse
             </tbody>

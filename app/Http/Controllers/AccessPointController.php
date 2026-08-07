@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Device;
-use App\Models\HikvisionTerminal;
 use App\Models\AccessPoint;
+use App\Models\HikvisionTerminal;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -19,8 +18,6 @@ class AccessPointController extends Controller
         $search = trim((string) $request->input('search', ''));
 
         $accessPoints = AccessPoint::with([
-            'enterDevice',
-            'exitDevice',
             'hikvisionTerminal',
             'employees' => fn ($q) => $q->orderBy('last_name')->orderBy('first_name'),
         ])
@@ -44,10 +41,9 @@ class AccessPointController extends Controller
 
     public function create(RusGuardDatabaseService $db): View
     {
-        $devices = Device::where('is_active', true)->orderBy('name')->get();
         $accessPoints = $db->getAccessPoints();
 
-        return view('access-points.create', compact('devices', 'accessPoints'));
+        return view('access-points.create', compact('accessPoints'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -56,8 +52,6 @@ class AccessPointController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'rusguard_access_point_id' => ['required', 'uuid'],
             'rusguard_access_point_name' => ['required', 'string', 'max:255'],
-            'enter_device_id' => ['nullable', 'exists:devices,id'],
-            'exit_device_id' => ['nullable', 'exists:devices,id'],
             'is_active' => ['boolean'],
         ]);
 
@@ -68,10 +62,9 @@ class AccessPointController extends Controller
 
     public function edit(AccessPoint $accessPoint, RusGuardDatabaseService $db): View
     {
-        $devices = Device::where('is_active', true)->orderBy('name')->get();
         $accessPoints = $db->getAccessPoints();
 
-        return view('access-points.edit', compact('accessPoint', 'devices', 'accessPoints'));
+        return view('access-points.edit', compact('accessPoint', 'accessPoints'));
     }
 
     public function update(Request $request, AccessPoint $accessPoint): RedirectResponse
@@ -80,8 +73,6 @@ class AccessPointController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'rusguard_access_point_id' => ['required', 'uuid'],
             'rusguard_access_point_name' => ['required', 'string', 'max:255'],
-            'enter_device_id' => ['nullable', 'exists:devices,id'],
-            'exit_device_id' => ['nullable', 'exists:devices,id'],
             'is_active' => ['boolean'],
         ]);
 
@@ -227,10 +218,10 @@ class AccessPointController extends Controller
 
     public function show(AccessPoint $accessPoint): View
     {
-        $accessPoint->load(['enterDevice', 'exitDevice', 'employees']);
+        $accessPoint->load('employees');
 
         $recentEvents = $accessPoint->accessEvents()
-            ->with(['employee', 'device'])
+            ->with('employee')
             ->latest('event_time')
             ->limit(50)
             ->get();

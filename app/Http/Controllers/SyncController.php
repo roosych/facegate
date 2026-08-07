@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\PushAccessPointToDevicesJob;
 use App\Jobs\SyncAccessPointJob;
 use App\Jobs\SyncAllJob;
 use App\Models\AccessPoint;
@@ -20,7 +19,7 @@ class SyncController extends Controller
 
     public function index(): View
     {
-        $accessPoints = AccessPoint::with(['enterDevice', 'exitDevice'])
+        $accessPoints = AccessPoint::query()
             ->where('is_active', true)
             ->get();
 
@@ -67,17 +66,6 @@ class SyncController extends Controller
         }
 
         return redirect()->back();
-    }
-
-    public function pushAccessPoint(AccessPoint $accessPoint): JsonResponse|RedirectResponse
-    {
-        PushAccessPointToDevicesJob::dispatch($accessPoint);
-
-        if (request()->ajax() || request()->wantsJson()) {
-            return response()->json(['ok' => true]);
-        }
-
-        return redirect()->back()->with('success', "Push to devices started for \"{$accessPoint->name}\".");
     }
 
     public function syncStatus(): JsonResponse

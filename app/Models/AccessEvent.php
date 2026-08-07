@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['employee_id', 'device_id', 'hikvision_terminal_id', 'access_point_id', 'event_time', 'verify_type', 'direction', 'card_no', 'raw_data'])]
+#[Fillable(['employee_id', 'hikvision_terminal_id', 'access_point_id', 'event_time', 'verify_type', 'direction', 'card_no', 'raw_data'])]
 class AccessEvent extends Model
 {
     use HasFactory;
@@ -16,11 +16,6 @@ class AccessEvent extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(Employee::class);
-    }
-
-    public function device(): BelongsTo
-    {
-        return $this->belongsTo(Device::class);
     }
 
     public function accessPoint(): BelongsTo

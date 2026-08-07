@@ -10,9 +10,9 @@
             <p class="text-xs text-gray-400 mt-0.5">{{ $stats['active_employees'] }} active</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">Devices</p>
-            <p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['devices'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['accessPoints'] }} access points</p>
+            <p class="text-xs text-gray-400 font-medium">Access Points</p>
+            <p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['accessPoints'] }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['terminals'] }} terminals</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
             <p class="text-xs text-gray-400 font-medium">Events Today</p>
@@ -46,9 +46,6 @@
             </a>
             <a href="{{ route('access-points.index') }}" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
                 Access Points
-            </a>
-            <a href="{{ route('devices.index') }}" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                Devices
             </a>
         </div>
     </div>

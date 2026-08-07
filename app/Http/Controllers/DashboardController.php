@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AccessEvent;
 use App\Models\AccessPoint;
-use App\Models\Device;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncLog;
@@ -22,8 +21,8 @@ class DashboardController extends Controller
         $stats = [
             'employees' => Employee::count(),
             'active_employees' => Employee::where('is_active', true)->count(),
-            'devices' => Device::count(),
             'accessPoints' => AccessPoint::count(),
+            'terminals' => HikvisionTerminal::where('is_active', true)->count(),
             'events_today' => AccessEvent::whereDate('event_time', today())->count(),
             'events_week' => AccessEvent::whereBetween('event_time', [now()->startOfWeek(), now()])->count(),
             'last_sync' => SyncLog::where('status', 'success')->latest()->value('created_at'),
@@ -36,7 +35,7 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
-        $recentSyncs = SyncLog::with(['employee', 'device', 'hikvisionTerminal'])
+        $recentSyncs = SyncLog::with(['employee', 'hikvisionTerminal'])
             ->latest()
             ->limit(8)
             ->get();

@@ -1,5 +1,5 @@
 <x-app-layout>
-    @section('subtitle', 'Sync employees to ZKT terminals')
+    @section('subtitle', 'Per-access-point resync from RusGuard')
     @section('title', 'Sync')
 
     <div class="mb-5">
@@ -26,22 +26,11 @@
                     @endif
                 </div>
 
-                <div class="text-xs text-gray-500 space-y-1 mb-4">
-                    <div>Entry: {{ $accessPoint->enterDevice?->name ?? '—' }}</div>
-                    <div>Exit: {{ $accessPoint->exitDevice?->name ?? '—' }}</div>
-                </div>
-
                 <div class="flex gap-2">
-                    <form method="POST" action="{{ route('sync.access-point', $accessPoint) }}" class="flex-1">
+                    <form method="POST" action="{{ route('sync.access-point', $accessPoint) }}" class="w-full">
                         @csrf
                         <button type="submit" class="w-full px-4 py-2 border border-indigo-200 text-indigo-600 text-sm rounded-lg hover:bg-indigo-50 transition-colors">
                             Sync from RusGuard
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('sync.push-access-point', $accessPoint) }}" class="flex-1">
-                        @csrf
-                        <button type="submit" class="w-full px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                            Push to Devices
                         </button>
                     </form>
                 </div>

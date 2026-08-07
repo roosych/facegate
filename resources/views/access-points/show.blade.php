@@ -10,8 +10,6 @@
             <dl class="text-sm divide-y divide-gray-50">
                 <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Access Point</dt><dd class="text-gray-700 mt-0.5">{{ $accessPoint->rusguard_access_point_name }}</dd></div>
                 <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">UUID</dt><dd class="text-gray-700 font-mono text-xs mt-0.5 break-all">{{ $accessPoint->rusguard_access_point_id }}</dd></div>
-                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Entry Device</dt><dd class="text-gray-700 text-right">{{ $accessPoint->enterDevice?->name ?? '—' }}</dd></div>
-                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Exit Device</dt><dd class="text-gray-700 text-right">{{ $accessPoint->exitDevice?->name ?? '—' }}</dd></div>
                 <div class="py-2 flex justify-between gap-4 items-center"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</dt><dd>
                     @if($accessPoint->is_active)
                         <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Active</span>

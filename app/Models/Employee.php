@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
-#[Fillable(['rusguard_uuid', 'emp_code', 'first_name', 'last_name', 'middle_name', 'photo_path', 'zkbio_id', 'is_active', 'last_synced_at', 'alcohol_skip_until'])]
+#[Fillable(['rusguard_uuid', 'emp_code', 'first_name', 'last_name', 'middle_name', 'photo_path', 'is_active', 'last_synced_at', 'alcohol_skip_until'])]
 class Employee extends Model
 {
     use HasFactory;
