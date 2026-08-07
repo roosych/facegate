@@ -8,6 +8,48 @@ use RuntimeException;
 
 class RusGuardDatabaseService
 {
+    /**
+     * Resolves every employee group to the group whose access levels actually apply to it.
+     *
+     * A group with "Использовать уровни доступа родительской группы" holds no levels of its
+     * own — they live on an ancestor, and the chain can be several groups deep. Matching an
+     * employee against their own group alone therefore finds nothing for anyone below such a
+     * group, and they silently never reach a terminal: three employees under
+     * "Loqistika şöbəsi" → "Təchizat şöbəsi" were missing this way, with a valid access level
+     * two levels up.
+     *
+     * Each row maps GroupID → SourceGroupID; join on IsAccessLevelsInherited = 0 to take the
+     * one resolved row per group. A chain whose root still inherits produces no such row,
+     * which is the right answer: there is nothing to inherit from. The depth cap keeps a
+     * malformed (cyclic) hierarchy from spinning instead of erroring out mid-sync.
+     */
+    private const EFFECTIVE_LEVEL_GROUP_CTE = '
+        WITH EffectiveLevelGroup AS (
+            SELECT
+                g._id     AS GroupID,
+                g._id     AS SourceGroupID,
+                g.ParentID,
+                g.IsAccessLevelsInherited,
+                0         AS depth
+            FROM EmployeeGroup g
+            WHERE g.IsRemoved = 0
+
+            UNION ALL
+
+            SELECT
+                c.GroupID,
+                p._id,
+                p.ParentID,
+                p.IsAccessLevelsInherited,
+                c.depth + 1
+            FROM EffectiveLevelGroup c
+            INNER JOIN EmployeeGroup p ON p._id = c.ParentID
+            WHERE c.IsAccessLevelsInherited = 1
+              AND p.IsRemoved = 0
+              AND c.depth < 16
+        )
+    ';
+
     private ?PDO $pdo = null;
 
     private function pdo(): PDO
@@ -53,7 +95,7 @@ class RusGuardDatabaseService
             ? "AND CONVERT(varchar(36), e.EmployeeGroupID) NOT IN ({$excludePlaceholders})"
             : '';
 
-        $sql = "
+        $sql = self::EFFECTIVE_LEVEL_GROUP_CTE."
             SELECT DISTINCT
                 CONVERT(varchar(36), e._id)             AS uuid,
                 ISNULL(e.LastName, '')
@@ -78,9 +120,11 @@ class RusGuardDatabaseService
                       e.IsAccessLevelsInherited = 1
                       AND EXISTS (
                           SELECT 1
-                          FROM EmployeeGroupAcsAccessLevel gal
+                          FROM EffectiveLevelGroup elg
+                          INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = elg.SourceGroupID
                           INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = gal.AcsAccessLevelID
-                          WHERE gal.EmployeeGroupID = e.EmployeeGroupID
+                          WHERE elg.GroupID = e.EmployeeGroupID
+                            AND elg.IsAccessLevelsInherited = 0
                             AND CONVERT(varchar(36), ap.DriverID) = ?
                             AND ap.IsRemoved = 0
                             AND (gal.EndDate IS NULL OR gal.EndDate > GETDATE())
@@ -191,7 +235,7 @@ class RusGuardDatabaseService
         }
 
         // Fetch employees via group access level assignments
-        $groupEmpSql = "
+        $groupEmpSql = self::EFFECTIVE_LEVEL_GROUP_CTE."
             SELECT DISTINCT
                 CONVERT(varchar(36), ap.DriverID)             AS driverId,
                 CONVERT(varchar(36), e._id)                   AS uuid,
@@ -200,7 +244,9 @@ class RusGuardDatabaseService
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
                 CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId
             FROM Employee e
-            INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = e.EmployeeGroupID
+            INNER JOIN EffectiveLevelGroup elg
+                ON elg.GroupID = e.EmployeeGroupID AND elg.IsAccessLevelsInherited = 0
+            INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = elg.SourceGroupID
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = gal.AcsAccessLevelID
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
@@ -636,40 +682,41 @@ class RusGuardDatabaseService
      */
     public function getAccessPoints(): array
     {
-        $stmt = $this->pdo()->prepare("
-            SELECT DISTINCT
-                CONVERT(varchar(36), ap.DriverID) AS driverId,
-                p.Value                           AS name,
-                ISNULL(d.ObjectTypeName, '')      AS driverType,
-                (
-                    SELECT COUNT(DISTINCT e._id)
-                    FROM Employee e
-                    WHERE e.IsRemoved = 0
-                      AND e.IsLocked = 0
-                      AND (
-                          EXISTS (
-                              SELECT 1 FROM EmployeeAcsAccessLevel eal
-                              INNER JOIN AcsAccessPoint ap2 ON ap2.AcsAccessLevelID = eal.AcsAccessLevelID
-                              WHERE eal.EmployeeID = e._id
-                                AND ap2.DriverID = ap.DriverID
-                                AND (eal.EndDate IS NULL OR eal.EndDate > GETDATE())
-                          )
-                          OR (
-                              e.IsAccessLevelsInherited = 1
-                              AND EXISTS (
-                                  SELECT 1 FROM EmployeeGroupAcsAccessLevel gal
-                                  INNER JOIN AcsAccessPoint ap2 ON ap2.AcsAccessLevelID = gal.AcsAccessLevelID
-                                  WHERE gal.EmployeeGroupID = e.EmployeeGroupID
-                                    AND ap2.DriverID = ap.DriverID
-                                    AND (gal.EndDate IS NULL OR gal.EndDate > GETDATE())
-                              )
-                          )
-                      )
-                ) AS employeeCount
+        // The employee count used to be a correlated subquery run once per access point. That
+        // was affordable while it only touched the employee's own group; resolving the parent
+        // chain inside it re-ran the recursive lookup per point per employee and took the query
+        // from 0.4s to 8.4s. Same numbers, computed once as a set and joined.
+        $stmt = $this->pdo()->prepare(self::EFFECTIVE_LEVEL_GROUP_CTE.",
+            EmployeeAtPoint AS (
+                SELECT e._id AS EmployeeID, ap2.DriverID
+                FROM Employee e
+                INNER JOIN EmployeeAcsAccessLevel eal
+                    ON eal.EmployeeID = e._id AND (eal.EndDate IS NULL OR eal.EndDate > GETDATE())
+                INNER JOIN AcsAccessPoint ap2 ON ap2.AcsAccessLevelID = eal.AcsAccessLevelID
+                WHERE e.IsRemoved = 0 AND e.IsLocked = 0
+
+                UNION ALL
+
+                SELECT e._id, ap2.DriverID
+                FROM Employee e
+                INNER JOIN EffectiveLevelGroup elg
+                    ON elg.GroupID = e.EmployeeGroupID AND elg.IsAccessLevelsInherited = 0
+                INNER JOIN EmployeeGroupAcsAccessLevel gal
+                    ON gal.EmployeeGroupID = elg.SourceGroupID AND (gal.EndDate IS NULL OR gal.EndDate > GETDATE())
+                INNER JOIN AcsAccessPoint ap2 ON ap2.AcsAccessLevelID = gal.AcsAccessLevelID
+                WHERE e.IsRemoved = 0 AND e.IsLocked = 0 AND e.IsAccessLevelsInherited = 1
+            )
+            SELECT
+                CONVERT(varchar(36), ap.DriverID)          AS driverId,
+                p.Value                                    AS name,
+                ISNULL(d.ObjectTypeName, '')               AS driverType,
+                COUNT(DISTINCT eap.EmployeeID)             AS employeeCount
             FROM AcsAccessPoint ap
             INNER JOIN Property p ON p._idResource = ap.DriverID AND p.PropertyName = ?
             LEFT JOIN Driver d ON d._idResource = ap.DriverID
+            LEFT JOIN EmployeeAtPoint eap ON eap.DriverID = ap.DriverID
             WHERE ap.IsRemoved = 0
+            GROUP BY ap.DriverID, p.Value, d.ObjectTypeName
         ");
 
         $stmt->execute(['Name']);
