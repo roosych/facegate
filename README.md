@@ -242,6 +242,18 @@ MAIL_FROM_ADDRESS=
 
 Пароль постгреса задан в двух местах — в `.env` и в `docker-compose.yml`. Менять надо оба.
 
+**Права на `.env`:**
+
+```bash
+chown root:www-data .env && chmod 640 .env
+```
+
+Файл должен быть закрыт от посторонних, но **читаем для `www-data`** — от этого пользователя
+работает php-fpm и под ним же запускается `config:cache` (см. пункт 5). Режим `600` от root
+выглядит безопаснее, но ломает всё скрытно: `config:cache` не может прочитать файл, молча
+кэширует конфиг из значений по умолчанию, и приложение уезжает на sqlite без `APP_KEY`. Веб
+начинает отдавать 500, при этом `.env` на месте и выглядит правильным.
+
 `RUSGUARD_DB_PORT` в конфиге есть, но в строку подключения не подставляется. Если порт
 нестандартный — писать его прямо в хосте: `RUSGUARD_DB_HOST=10.0.0.5:1435`.
 
@@ -363,7 +375,7 @@ docker exec -u www-data zkbio_app php artisan migrate --force
 docker run --rm -v "$PWD":/app -w /app node:22-alpine sh -c "npm ci && npm run build"
 docker exec -u www-data zkbio_app php artisan config:cache && docker exec -u www-data zkbio_app php artisan route:cache && docker exec -u www-data zkbio_app php artisan view:cache
 docker exec -u www-data zkbio_queue php artisan queue:restart
-docker restart zkbio_app
+docker restart zkbio_app zkbio_queue zkbio_scheduler
 
 # Подстраховка: git pull и npm запускались от root и могли оставить файлы, недоступные веб-серверу
 docker exec zkbio_app chown -R www-data:www-data storage bootstrap/cache
@@ -372,9 +384,12 @@ docker exec zkbio_app chown -R www-data:www-data storage bootstrap/cache
 Про `-u www-data` — см. пункт 5 развёртывания. Без него артизан пишет кэши и лог от root, и веб
 начинает отдавать 500 вообще без записей в логе.
 
-Перезапуск двух последних сервисов обязателен и по одной и той же причине: и воркер очереди, и
-php-fpm держат код в памяти. Без перезапуска синк отработает старым кодом и отчитается об
-успехе — ошибки не будет, будет неправильное поведение.
+**Перезапускать надо все три сервиса, а не только `app`.** Кэш конфига лежит файлом в
+`bootstrap/cache`, но каждый процесс читает его один раз при старте и дальше держит в памяти.
+Воркер очереди и планировщик живут часами, поэтому после `config:cache` они продолжают работать
+со старым конфигом — вплоть до того, что ходят в другую базу, чем веб. По той же причине
+перезапуск нужен и после изменения кода: и воркер, и php-fpm его закэшировали, а синк отработает
+старым кодом и отчитается об успехе.
 
 **После обновления проверять не только `/monitoring`, но и коды ответов вебхука:**
 
@@ -452,6 +467,18 @@ docker logs --since=5m facegate_nginx 2>&1 | grep -oP 'POST /api/hikvision\S+ HT
 
 ```bash
 docker exec facegate_app chown -R www-data:www-data storage bootstrap/cache
+```
+
+**Сплошные `500`, а в логе жалобы на sqlite и `/var/www/database/database.sqlite`** — обратная
+ошибка: `config:cache` запускали от `www-data`, а `.env` ему недоступен на чтение. Laravel не
+падает, а тихо берёт значения по умолчанию — отсюда и sqlite вместо постгреса. Проверить и
+починить:
+
+```bash
+docker exec -u www-data facegate_app sh -c 'head -c1 .env >/dev/null && echo ok || echo UNREADABLE'
+chown root:www-data .env && chmod 640 .env
+docker exec -u www-data facegate_app php artisan config:cache
+docker restart facegate_app facegate_queue facegate_scheduler
 ```
 
 **Синк падает** — `/monitoring`, блок очереди: там текст ошибки и кнопка перезапуска. Терминал
