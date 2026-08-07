@@ -5,18 +5,25 @@ namespace Tests\Feature\Auth;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
+/**
+ * Registration is closed on purpose: this application holds the employee directory of a
+ * company's access control system, and self-service signup would hand it to anyone who can
+ * reach the login page. Accounts are created by hand — see "Пользователи" in the README.
+ *
+ * These tests guard the absence. Scaffolding tends to grow registration back when someone
+ * re-runs a starter kit generator, and the failure is quiet: a new route appears and nobody
+ * notices until an unexpected account shows up.
+ */
 class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_registration_screen_can_be_rendered(): void
+    public function test_the_registration_screen_is_gone(): void
     {
-        $response = $this->get('/register');
-
-        $response->assertStatus(200);
+        $this->get('/register')->assertNotFound();
     }
 
-    public function test_new_users_can_register(): void
+    public function test_nobody_can_register_themselves(): void
     {
         $response = $this->post('/register', [
             'name' => 'Test User',
@@ -25,7 +32,16 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
         ]);
 
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertNotFound();
+        $this->assertGuest();
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_no_route_is_named_register(): void
+    {
+        $this->assertFalse(
+            app('router')->has('register'),
+            'A route named "register" exists again — registration was reintroduced.'
+        );
     }
 }
