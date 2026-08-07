@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Services;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Services\HikvisionSyncService;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,12 +56,12 @@ class HikvisionSyncRemovalGuardTest extends TestCase
     public function test_does_not_wipe_the_terminal_when_its_access_point_was_deactivated(): void
     {
         // What a terminal bound to a point whose driverId changed in RusGuard looks like: the
-        // old turnstile is deactivated and its pivot is no longer maintained.
-        $turnstile = Turnstile::factory()->create(['is_active' => false]);
+        // old access point is deactivated and its pivot is no longer maintained.
+        $accessPoint = AccessPoint::factory()->create(['is_active' => false]);
         $employee = Employee::factory()->create(['emp_code' => 10, 'photo_path' => null]);
-        $employee->turnstiles()->attach($turnstile->id);
+        $employee->accessPoints()->attach($accessPoint->id);
 
-        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $turnstile->id]);
+        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $accessPoint->id]);
 
         $this->fakeTerminalHoldingStrangers();
 
@@ -74,8 +74,8 @@ class HikvisionSyncRemovalGuardTest extends TestCase
 
     public function test_does_not_wipe_the_terminal_when_the_access_point_has_no_employees(): void
     {
-        $turnstile = Turnstile::factory()->create(['is_active' => true]);
-        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $turnstile->id]);
+        $accessPoint = AccessPoint::factory()->create(['is_active' => true]);
+        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $accessPoint->id]);
 
         $this->fakeTerminalHoldingStrangers();
 
@@ -101,11 +101,11 @@ class HikvisionSyncRemovalGuardTest extends TestCase
 
     public function test_still_removes_strangers_when_the_roster_is_trustworthy(): void
     {
-        $turnstile = Turnstile::factory()->create(['is_active' => true]);
+        $accessPoint = AccessPoint::factory()->create(['is_active' => true]);
         $employee = Employee::factory()->create(['emp_code' => 10, 'photo_path' => null]);
-        $employee->turnstiles()->attach($turnstile->id);
+        $employee->accessPoints()->attach($accessPoint->id);
 
-        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $turnstile->id]);
+        $terminal = HikvisionTerminal::factory()->create(['ip' => '127.0.0.1', 'access_point_id' => $accessPoint->id]);
 
         $this->fakeTerminalHoldingStrangers();
 

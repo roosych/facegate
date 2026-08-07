@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccessEventController;
+use App\Http\Controllers\AccessPointController;
 use App\Http\Controllers\AlcoholDebugController;
 use App\Http\Controllers\AlcoholStatusController;
 use App\Http\Controllers\DashboardController;
@@ -13,7 +14,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RusGuardController;
 use App\Http\Controllers\SyncController;
 use App\Http\Controllers\SyncLogController;
-use App\Http\Controllers\TurnstileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
@@ -22,16 +22,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/status', [DashboardController::class, 'status'])->name('dashboard.status');
 
-    Route::get('/access-points', [TurnstileController::class, 'index'])->name('access-points.index');
-    Route::get('/access-points/create', [TurnstileController::class, 'create'])->name('access-points.create');
-    Route::post('/access-points', [TurnstileController::class, 'store'])->name('access-points.store');
-    Route::get('/access-points/{turnstile}/edit', [TurnstileController::class, 'edit'])->name('access-points.edit');
-    Route::patch('/access-points/{turnstile}', [TurnstileController::class, 'update'])->name('access-points.update');
-    Route::get('/access-points/check-points', [TurnstileController::class, 'checkPoints'])->name('access-points.check-points');
-    Route::post('/access-points/create-point', [TurnstileController::class, 'createPoint'])->name('access-points.create-point');
-    Route::get('/access-points/{turnstile}/check-count', [TurnstileController::class, 'checkCount'])->name('access-points.check-count');
-    Route::get('/access-points/{turnstile}/rusguard-employees', [TurnstileController::class, 'rusguardEmployees'])->name('access-points.rusguard-employees');
-    Route::get('/access-points/{turnstile}', [TurnstileController::class, 'show'])->name('access-points.show');
+    Route::get('/access-points', [AccessPointController::class, 'index'])->name('access-points.index');
+    Route::get('/access-points/create', [AccessPointController::class, 'create'])->name('access-points.create');
+    Route::post('/access-points', [AccessPointController::class, 'store'])->name('access-points.store');
+    Route::get('/access-points/{accessPoint}/edit', [AccessPointController::class, 'edit'])->name('access-points.edit');
+    Route::patch('/access-points/{accessPoint}', [AccessPointController::class, 'update'])->name('access-points.update');
+    Route::get('/access-points/check-points', [AccessPointController::class, 'checkPoints'])->name('access-points.check-points');
+    Route::post('/access-points/create-point', [AccessPointController::class, 'createPoint'])->name('access-points.create-point');
+    Route::get('/access-points/{accessPoint}/check-count', [AccessPointController::class, 'checkCount'])->name('access-points.check-count');
+    Route::get('/access-points/{accessPoint}/rusguard-employees', [AccessPointController::class, 'rusguardEmployees'])->name('access-points.rusguard-employees');
+    Route::get('/access-points/{accessPoint}', [AccessPointController::class, 'show'])->name('access-points.show');
 
     Route::get('/devices', [DeviceController::class, 'index'])->name('devices.index');
     Route::get('/devices/create', [DeviceController::class, 'create'])->name('devices.create');
@@ -58,9 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/sync', [SyncController::class, 'index'])->name('sync.index');
     Route::get('/sync/status', [SyncController::class, 'syncStatus'])->name('sync.status');
-    Route::post('/sync/turnstile/{turnstile}', [SyncController::class, 'syncTurnstile'])->name('sync.turnstile');
-    Route::get('/sync/turnstile/{turnstile}/status', [SyncController::class, 'syncTurnstileStatus'])->name('sync.turnstile.status');
-    Route::post('/sync/turnstile/{turnstile}/push', [SyncController::class, 'pushTurnstile'])->name('sync.push-turnstile');
+    Route::post('/sync/access-point/{accessPoint}', [SyncController::class, 'syncAccessPoint'])->name('sync.access-point');
+    Route::get('/sync/access-point/{accessPoint}/status', [SyncController::class, 'syncAccessPointStatus'])->name('sync.access-point.status');
+    Route::post('/sync/access-point/{accessPoint}/push', [SyncController::class, 'pushAccessPoint'])->name('sync.push-access-point');
     Route::post('/sync/all', [SyncController::class, 'syncAll'])->name('sync.all');
 
     Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
@@ -80,7 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/hikvision/{hikvision}/edit', [HikvisionTerminalController::class, 'edit'])->name('hikvision.edit');
     Route::patch('/hikvision/{hikvision}', [HikvisionTerminalController::class, 'update'])->name('hikvision.update');
     Route::delete('/hikvision/{hikvision}', [HikvisionTerminalController::class, 'destroy'])->name('hikvision.destroy');
-    Route::patch('/hikvision/{hikvision}/link', [HikvisionTerminalController::class, 'linkTurnstile'])->name('hikvision.link-turnstile');
+    Route::patch('/hikvision/{hikvision}/link', [HikvisionTerminalController::class, 'linkAccessPoint'])->name('hikvision.link-access-point');
     Route::get('/hikvision/{hikvision}/check-connection', [HikvisionTerminalController::class, 'checkConnection'])->name('hikvision.check-connection');
     Route::get('/hikvision/{hikvision}/employees', [HikvisionTerminalController::class, 'employees'])->name('hikvision.employees');
     Route::delete('/hikvision/{hikvision}/employees', [HikvisionTerminalController::class, 'deleteAllEmployees'])->name('hikvision.employees.delete-all');

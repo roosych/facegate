@@ -31,7 +31,7 @@ class SyncRun extends Model
 
     public const KIND_HIKVISION = 'hikvision';
 
-    public const KIND_TURNSTILE = 'turnstile';
+    public const KIND_ACCESS_POINT = 'access_point';
 
     /** Queued by the scheduler in routes/console.php. */
     public const TRIGGER_SCHEDULE = 'schedule';
@@ -116,7 +116,7 @@ class SyncRun extends Model
     public function subjectName(): string
     {
         return $this->hikvisionTerminal?->name
-            ?? $this->turnstile?->name
+            ?? $this->accessPoint?->name
             ?? 'RusGuard';
     }
 
@@ -125,9 +125,9 @@ class SyncRun extends Model
         return $this->belongsTo(HikvisionTerminal::class);
     }
 
-    public function turnstile(): BelongsTo
+    public function accessPoint(): BelongsTo
     {
-        return $this->belongsTo(Turnstile::class, 'access_point_id');
+        return $this->belongsTo(AccessPoint::class, 'access_point_id');
     }
 
     /**

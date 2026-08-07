@@ -128,7 +128,7 @@
 
             <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-5 py-4 mb-3">
                 <div class="flex items-center gap-3">
-                    <p class="text-sm text-gray-500">{{ $turnstiles->total() }} access points</p>
+                    <p class="text-sm text-gray-500">{{ $accessPoints->total() }} access points</p>
 
                     {{-- Check points button --}}
                     <button type="button" @click="check()" :disabled="checking"
@@ -298,7 +298,7 @@
     </div>
 
     <div class="space-y-2">
-        @forelse($turnstiles as $turnstile)
+        @forelse($accessPoints as $accessPoint)
             <div x-data="{
                 expanded: false,
                 modalOpen: false,
@@ -366,24 +366,24 @@
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-medium text-gray-800 truncate">
-                                    {{ $turnstile->rusguard_access_point_name ?: $turnstile->name }}
+                                    {{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}
                                 </span>
-                                @if($turnstile->device_type)
-                                    <span class="inline-flex flex-shrink-0 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-500 rounded">{{ $turnstile->device_type }}</span>
+                                @if($accessPoint->device_type)
+                                    <span class="inline-flex flex-shrink-0 px-1.5 py-0.5 text-xs bg-gray-100 text-gray-500 rounded">{{ $accessPoint->device_type }}</span>
                                 @endif
                             </div>
-                            <span class="text-xs text-gray-400 font-mono">{{ $turnstile->rusguard_access_point_id }}</span>
+                            <span class="text-xs text-gray-400 font-mono">{{ $accessPoint->rusguard_access_point_id }}</span>
                         </div>
                         <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full">
-                            {{ $turnstile->employees_count }} employees
+                            {{ $accessPoint->employees_count }} employees
                         </span>
-                        @if($turnstile->hikvisionTerminal)
+                        @if($accessPoint->hikvisionTerminal)
                             <span class="inline-flex flex-shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 rounded-full">
                                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                {{ $turnstile->hikvisionTerminal->name }} · {{ $turnstile->hikvisionTerminal->ip }}
+                                {{ $accessPoint->hikvisionTerminal->name }} · {{ $accessPoint->hikvisionTerminal->ip }}
                             </span>
                         @endif
-                        @unless($turnstile->is_active)
+                        @unless($accessPoint->is_active)
                             <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">Inactive</span>
                         @endunless
                     </div>
@@ -392,14 +392,14 @@
                     <div class="flex items-center gap-2 flex-shrink-0">
 
                         <button type="button"
-                            @click="openRgModal('{{ route('access-points.rusguard-employees', $turnstile) }}')"
+                            @click="openRgModal('{{ route('access-points.rusguard-employees', $accessPoint) }}')"
                             class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors">
                             Fetch from RusGuard
                         </button>
 
-                        @if($turnstile->hikvisionTerminal)
+                        @if($accessPoint->hikvisionTerminal)
                             <button type="button"
-                                @click="startSync('{{ route('hikvision.sync.terminal', $turnstile->hikvisionTerminal) }}', '{{ route('hikvision.sync.status', $turnstile->hikvisionTerminal) }}')"
+                                @click="startSync('{{ route('hikvision.sync.terminal', $accessPoint->hikvisionTerminal) }}', '{{ route('hikvision.sync.status', $accessPoint->hikvisionTerminal) }}')"
                                 class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
                                 Push
                             </button>
@@ -432,7 +432,7 @@
                 </div>
 
                 {{-- Link terminal modal (shown when no terminal linked) --}}
-                @if(!$turnstile->hikvisionTerminal)
+                @if(!$accessPoint->hikvisionTerminal)
                 <div
                     x-show="modalOpen"
                     x-cloak
@@ -448,7 +448,7 @@
                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-900">Link terminal</h3>
-                                <p class="text-xs text-gray-400 mt-0.5">{{ $turnstile->rusguard_access_point_name ?: $turnstile->name }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">{{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}</p>
                             </div>
                             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -460,10 +460,10 @@
                             @foreach($freeTerminals as $terminal)
                                 <button type="button"
                                     @click="
-                                        fetch('{{ route('hikvision.link-turnstile', $terminal) }}', {
+                                        fetch('{{ route('hikvision.link-access-point', $terminal) }}', {
                                             method: 'PATCH',
                                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-                                            body: JSON.stringify({ access_point_id: {{ $turnstile->id }} })
+                                            body: JSON.stringify({ access_point_id: {{ $accessPoint->id }} })
                                         }).then(() => window.location.reload());
                                         modalOpen = false;
                                     "
@@ -499,7 +499,7 @@
                     >
                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900">{{ $turnstile->rusguard_access_point_name ?: $turnstile->name }}</h3>
+                                <h3 class="text-sm font-semibold text-gray-900">{{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}</h3>
                                 <p class="text-xs text-gray-400 mt-0.5" x-show="!rgLoading && rgEmployees.length > 0">
                                     <span x-text="rgEmployees.length + ' people'"></span>
                                     <span
@@ -563,7 +563,7 @@
 
                         <div x-show="!rgLoading && rgEmployees.length > 0" class="px-5 py-4 border-t border-gray-100 flex-shrink-0">
                             <button type="button"
-                                @click="rgModal = false; startSync('{{ route('sync.turnstile', $turnstile) }}', '{{ route('sync.turnstile.status', $turnstile) }}')"
+                                @click="rgModal = false; startSync('{{ route('sync.access-point', $accessPoint) }}', '{{ route('sync.access-point.status', $accessPoint) }}')"
                                 class="w-full px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
                                 Save to local DB
                             </button>
@@ -573,9 +573,9 @@
 
                 {{-- Employee list --}}
                 <div x-show="expanded" x-transition class="border-t border-gray-100 px-5 py-4">
-                    @if($turnstile->employees->isNotEmpty())
+                    @if($accessPoint->employees->isNotEmpty())
                         <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5">
-                            @foreach($turnstile->employees as $employee)
+                            @foreach($accessPoint->employees as $employee)
                                 <li class="flex items-center gap-2 min-w-0">
                                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></span>
                                     <a href="{{ route('employees.show', $employee) }}" class="text-sm text-gray-700 hover:text-indigo-600 truncate">
@@ -603,7 +603,7 @@
         @endforelse
     </div>
 
-    @if($turnstiles->hasPages())
-        <div class="mt-4">{{ $turnstiles->links() }}</div>
+    @if($accessPoints->hasPages())
+        <div class="mt-4">{{ $accessPoints->links() }}</div>
     @endif
 </x-app-layout>

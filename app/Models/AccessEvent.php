@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 #[Fillable(['employee_id', 'device_id', 'hikvision_terminal_id', 'access_point_id', 'event_time', 'verify_type', 'direction', 'card_no', 'raw_data'])]
 class AccessEvent extends Model
 {
@@ -22,9 +23,9 @@ class AccessEvent extends Model
         return $this->belongsTo(Device::class);
     }
 
-    public function turnstile(): BelongsTo
+    public function accessPoint(): BelongsTo
     {
-        return $this->belongsTo(Turnstile::class, 'access_point_id');
+        return $this->belongsTo(AccessPoint::class, 'access_point_id');
     }
 
     public function hikvisionTerminal(): BelongsTo

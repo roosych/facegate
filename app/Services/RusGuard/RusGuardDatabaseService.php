@@ -352,7 +352,7 @@ class RusGuardDatabaseService
      * the excluded/departed-employees group, blocked) so they can be deactivated locally.
      *
      * Must stay in step with the point-scoped queries above: anything they exclude has to be
-     * excluded here too, otherwise the employee is dropped from every turnstile but never
+     * excluded here too, otherwise the employee is dropped from every access point but never
      * deactivated, and their local row lingers as active forever.
      *
      * @return array<int, string> lowercase uuids
@@ -547,7 +547,7 @@ class RusGuardDatabaseService
      */
     private const RELEVANT_AUDIT_MSG_TYPES = [
         // Access points enter and leave our world through access levels — the point queries
-        // join AcsAccessPoint to AcsAccessLevel — so these are what "a turnstile appeared or
+        // join AcsAccessPoint to AcsAccessLevel — so these are what "an access point appeared or
         // disappeared" looks like in the audit log. Deleting the driver itself has no message
         // type of its own; the hourly resync is what catches that.
         2,  // Добавление точки доступа в уровень доступа

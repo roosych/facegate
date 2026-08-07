@@ -59,9 +59,9 @@
                     <x-input-label for="access_point_id" value="Access Point" />
                     <select id="access_point_id" name="access_point_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                         <option value="">— None —</option>
-                        @foreach($turnstiles as $turnstile)
-                            <option value="{{ $turnstile->id }}" @selected(old('access_point_id', $hikvision->access_point_id) == $turnstile->id)>
-                                {{ $turnstile->rusguard_access_point_name ?: $turnstile->name }}
+                        @foreach($accessPoints as $accessPoint)
+                            <option value="{{ $accessPoint->id }}" @selected(old('access_point_id', $hikvision->access_point_id) == $accessPoint->id)>
+                                {{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}
                             </option>
                         @endforeach
                     </select>

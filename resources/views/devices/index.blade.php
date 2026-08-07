@@ -98,8 +98,8 @@
                                     style="width:100%;padding:0.5rem 0.75rem;border:1px solid #d1d5db;border-radius:0.5rem;font-size:0.875rem;color:#111827;background:#fff;outline:none"
                                 >
                                     <option value="">— Select access point —</option>
-                                    @foreach($turnstiles as $turnstile)
-                                        <option value="{{ $turnstile->id }}">{{ $turnstile->rusguard_access_point_name ?: $turnstile->name }}</option>
+                                    @foreach($accessPoints as $accessPoint)
+                                        <option value="{{ $accessPoint->id }}">{{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}</option>
                                     @endforeach
                                 </select>
                             </div>

@@ -1,6 +1,6 @@
 <x-app-layout>
     @section('subtitle', 'Access point details')
-    @section('title', $turnstile->name)
+    @section('title', $accessPoint->name)
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
@@ -8,12 +8,12 @@
         <div class="bg-white rounded-lg shadow border border-gray-200 p-5">
             <h2 class="text-sm font-semibold text-gray-700 mb-3">Details</h2>
             <dl class="text-sm divide-y divide-gray-50">
-                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Access Point</dt><dd class="text-gray-700 mt-0.5">{{ $turnstile->rusguard_access_point_name }}</dd></div>
-                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">UUID</dt><dd class="text-gray-700 font-mono text-xs mt-0.5 break-all">{{ $turnstile->rusguard_access_point_id }}</dd></div>
-                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Entry Device</dt><dd class="text-gray-700 text-right">{{ $turnstile->enterDevice?->name ?? '—' }}</dd></div>
-                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Exit Device</dt><dd class="text-gray-700 text-right">{{ $turnstile->exitDevice?->name ?? '—' }}</dd></div>
+                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Access Point</dt><dd class="text-gray-700 mt-0.5">{{ $accessPoint->rusguard_access_point_name }}</dd></div>
+                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">UUID</dt><dd class="text-gray-700 font-mono text-xs mt-0.5 break-all">{{ $accessPoint->rusguard_access_point_id }}</dd></div>
+                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Entry Device</dt><dd class="text-gray-700 text-right">{{ $accessPoint->enterDevice?->name ?? '—' }}</dd></div>
+                <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Exit Device</dt><dd class="text-gray-700 text-right">{{ $accessPoint->exitDevice?->name ?? '—' }}</dd></div>
                 <div class="py-2 flex justify-between gap-4 items-center"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</dt><dd>
-                    @if($turnstile->is_active)
+                    @if($accessPoint->is_active)
                         <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">Active</span>
                     @else
                         <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">Inactive</span>
@@ -21,7 +21,7 @@
                 </dd></div>
             </dl>
             <div class="mt-4">
-                <form method="POST" action="{{ route('sync.turnstile', $turnstile) }}">
+                <form method="POST" action="{{ route('sync.access-point', $accessPoint) }}">
                     @csrf
                     <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
                         Sync This Access Point
@@ -32,9 +32,9 @@
 
         {{-- Employees --}}
         <div class="bg-white rounded-lg shadow border border-gray-200 p-5">
-            <h2 class="text-sm font-semibold text-gray-700 mb-3">Employees ({{ $turnstile->employees->count() }})</h2>
+            <h2 class="text-sm font-semibold text-gray-700 mb-3">Employees ({{ $accessPoint->employees->count() }})</h2>
             <div class="space-y-1 max-h-80 overflow-y-auto">
-                @forelse($turnstile->employees as $employee)
+                @forelse($accessPoint->employees as $employee)
                     <a href="{{ route('employees.show', $employee) }}" class="flex items-center justify-between py-1.5 px-2 rounded hover:bg-gray-50 text-sm">
                         <span class="text-gray-800">{{ $employee->full_name }}</span>
                         <span class="text-xs text-gray-400 font-mono">{{ $employee->emp_code }}</span>

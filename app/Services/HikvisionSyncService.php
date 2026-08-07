@@ -26,7 +26,7 @@ class HikvisionSyncService
     public function __construct(private readonly RusGuardDatabaseService $rusGuardDb) {}
 
     /**
-     * Sync all employees from turnstiles linked to this terminal.
+     * Sync all employees from access points linked to this terminal.
      * Adds new employees, updates existing ones, removes those no longer linked.
      *
      * @return array{synced: int, removed: int, errors: int, faces: int, cards: int, guestsSkipped: int, alcoholRequired: int, alcoholSkipped: int, alcoholFailed: int, removalSkipped: string|null}
@@ -63,9 +63,9 @@ class HikvisionSyncService
             throw new \RuntimeException("Terminal [{$terminal->name}] is offline or unreachable at {$terminal->ip}");
         }
 
-        $terminal->loadMissing(['turnstile.employees.keys']);
+        $terminal->loadMissing(['accessPoint.employees.keys']);
 
-        $employees = $terminal->turnstile
+        $employees = $terminal->accessPoint
             ?->employees
             ->unique('id')
             ->values()
@@ -284,7 +284,7 @@ class HikvisionSyncService
         // this device" — it is what a terminal bound to a detached or deactivated access point
         // looks like, and removal would then wipe every person off working hardware. That is
         // reachable in practice: when a point's driverId changes in RusGuard the sync creates a
-        // fresh turnstile and deactivates the old one, leaving any terminal still bound to the
+        // fresh access point and deactivates the old one, leaving any terminal still bound to the
         // old row reading an empty, no-longer-updated pivot.
         $roster = $this->rosterTrustProblem($terminal, $employees->count());
 
@@ -477,18 +477,18 @@ class HikvisionSyncService
      */
     private function rosterTrustProblem(HikvisionTerminal $terminal, int $rosterSize): ?string
     {
-        $turnstile = $terminal->turnstile;
+        $accessPoint = $terminal->accessPoint;
 
-        if ($turnstile === null) {
+        if ($accessPoint === null) {
             return 'terminal is not linked to an access point';
         }
 
-        if (! $turnstile->is_active) {
-            return 'access point ['.$turnstile->name.'] is deactivated, so its employee list is no longer maintained';
+        if (! $accessPoint->is_active) {
+            return 'access point ['.$accessPoint->name.'] is deactivated, so its employee list is no longer maintained';
         }
 
         if ($rosterSize === 0) {
-            return 'access point ['.$turnstile->name.'] has no employees linked';
+            return 'access point ['.$accessPoint->name.'] has no employees linked';
         }
 
         return null;

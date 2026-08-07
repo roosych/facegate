@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Services;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
-use App\Models\Turnstile;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use App\Services\SyncService;
 use App\Services\ZKBioService;
@@ -48,10 +48,10 @@ class SyncServiceTest extends TestCase
 
         $this->assertSame(0, $result['errors']);
 
-        $turnstile = Turnstile::where('rusguard_access_point_id', $driverId)->first();
+        $accessPoint = AccessPoint::where('rusguard_access_point_id', $driverId)->first();
 
-        $this->assertNotNull($turnstile);
-        $this->assertSame(2, $turnstile->employees()->count());
+        $this->assertNotNull($accessPoint);
+        $this->assertSame(2, $accessPoint->employees()->count());
     }
 
     public function test_employee_seen_on_multiple_access_points_is_only_fetched_once(): void
@@ -84,15 +84,15 @@ class SyncServiceTest extends TestCase
         $this->assertSame(0, $result['errors']);
         $this->assertSame(1, $result['synced']);
 
-        $this->assertSame(1, Turnstile::where('rusguard_access_point_id', 'point-a')->first()->employees()->count());
-        $this->assertSame(1, Turnstile::where('rusguard_access_point_id', 'point-b')->first()->employees()->count());
+        $this->assertSame(1, AccessPoint::where('rusguard_access_point_id', 'point-a')->first()->employees()->count());
+        $this->assertSame(1, AccessPoint::where('rusguard_access_point_id', 'point-b')->first()->employees()->count());
     }
 
     public function test_deactivates_local_employee_no_longer_active_in_rusguard(): void
     {
-        $turnstile = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-x']);
+        $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-x']);
         $gone = Employee::factory()->create(['rusguard_uuid' => '33333333-3333-3333-3333-333333333333', 'is_active' => true]);
-        $turnstile->employees()->attach($gone->id);
+        $accessPoint->employees()->attach($gone->id);
 
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([]);
@@ -104,7 +104,7 @@ class SyncServiceTest extends TestCase
 
         $this->assertSame(1, $result['deactivated']);
         $this->assertFalse($gone->fresh()->is_active);
-        $this->assertSame(0, $gone->turnstiles()->count());
+        $this->assertSame(0, $gone->accessPoints()->count());
     }
 
     /**
@@ -128,8 +128,8 @@ class SyncServiceTest extends TestCase
 
     public function test_deactivates_access_point_deleted_in_rusguard(): void
     {
-        $kept = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-live', 'is_active' => true]);
-        $gone = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-deleted', 'is_active' => true]);
+        $kept = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-live', 'is_active' => true]);
+        $gone = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-deleted', 'is_active' => true]);
 
         $syncService = new SyncService($this->rusGuardReturningPoints(['point-live']), app(ZKBioService::class));
         $result = $syncService->syncAllFromRusGuard();
@@ -141,7 +141,7 @@ class SyncServiceTest extends TestCase
 
     public function test_deactivating_a_point_keeps_its_employee_links(): void
     {
-        $gone = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-deleted', 'is_active' => true]);
+        $gone = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-deleted', 'is_active' => true]);
         $employee = Employee::factory()->create(['is_active' => true]);
         $gone->employees()->attach($employee->id);
 
@@ -166,7 +166,7 @@ class SyncServiceTest extends TestCase
 
     public function test_an_empty_rusguard_response_deactivates_no_points(): void
     {
-        $turnstile = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-live', 'is_active' => true]);
+        $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-live', 'is_active' => true]);
 
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         // An outage or failed query, not "every access point was deleted".
@@ -177,13 +177,13 @@ class SyncServiceTest extends TestCase
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(0, $result['pointsDeactivated']);
-        $this->assertTrue($turnstile->fresh()->is_active);
+        $this->assertTrue($accessPoint->fresh()->is_active);
     }
 
     public function test_uuid_case_difference_is_not_mistaken_for_a_deleted_point(): void
     {
         // SQL Server hands back uppercase uuids while Postgres canonicalizes to lowercase.
-        $turnstile = Turnstile::factory()->create([
+        $accessPoint = AccessPoint::factory()->create([
             'rusguard_access_point_id' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
             'is_active' => true,
         ]);
@@ -195,14 +195,14 @@ class SyncServiceTest extends TestCase
         $result = $syncService->syncAllFromRusGuard();
 
         $this->assertSame(0, $result['pointsDeactivated']);
-        $this->assertTrue($turnstile->fresh()->is_active);
+        $this->assertTrue($accessPoint->fresh()->is_active);
     }
 
     public function test_leaves_active_employee_untouched(): void
     {
-        $turnstile = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-y']);
+        $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-y']);
         $stillHere = Employee::factory()->create(['rusguard_uuid' => '44444444-4444-4444-4444-444444444444', 'is_active' => true]);
-        $turnstile->employees()->attach($stillHere->id);
+        $accessPoint->employees()->attach($stillHere->id);
 
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([]);
@@ -213,14 +213,14 @@ class SyncServiceTest extends TestCase
 
         $this->assertSame(0, $result['deactivated']);
         $this->assertTrue($stillHere->fresh()->is_active);
-        $this->assertSame(1, $stillHere->turnstiles()->count());
+        $this->assertSame(1, $stillHere->accessPoints()->count());
     }
 
-    public function test_turnstile_sync_writes_to_its_own_cache_key_not_the_global_one(): void
+    public function test_access_point_sync_writes_to_its_own_cache_key_not_the_global_one(): void
     {
         Cache::put(SyncService::SYNC_STATUS_KEY, ['status' => 'running', 'emp_total' => 11925]);
 
-        $turnstile = Turnstile::factory()->create(['rusguard_access_point_id' => 'point-1']);
+        $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-1']);
 
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         $rusGuardDb->shouldReceive('getAccessPointDeviceType')->andReturn(null);
@@ -231,13 +231,13 @@ class SyncServiceTest extends TestCase
         $rusGuardDb->shouldReceive('getEmployeeKeys')->andReturn([]);
 
         $syncService = new SyncService($rusGuardDb, app(ZKBioService::class));
-        $syncService->syncEmployeesForTurnstile($turnstile->id);
+        $syncService->syncEmployeesForAccessPoint($accessPoint->id);
 
-        $scoped = Cache::get(SyncService::SYNC_STATUS_KEY.'_'.$turnstile->id);
+        $scoped = Cache::get(SyncService::SYNC_STATUS_KEY.'_'.$accessPoint->id);
         $this->assertSame('done', $scoped['status']);
         $this->assertSame(1, $scoped['emp_total']);
 
-        // The unrelated global "sync all" progress must be untouched by a per-turnstile sync.
+        // The unrelated global "sync all" progress must be untouched by a per-access point sync.
         $global = Cache::get(SyncService::SYNC_STATUS_KEY);
         $this->assertSame('running', $global['status']);
         $this->assertSame(11925, $global['emp_total']);

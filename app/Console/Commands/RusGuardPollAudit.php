@@ -54,7 +54,7 @@ class RusGuardPollAudit extends Command
             // A single SyncAllJob run already reads the org's current RusGuard state, so
             // dispatching another chain on top would just queue a redundant multi-minute
             // resync behind it — skip while one is in flight. The cursor must stay put when we
-            // skip, though: this status key is shared with PushTurnstileToDevicesJob, which
+            // skip, though: this status key is shared with PushAccessPointToDevicesJob, which
             // does not read RusGuard at all, so "something is running" is no guarantee these
             // particular events get covered. Leaving the cursor alone costs at most a repeated
             // resync on the next poll, whereas advancing it dropped the events for good.

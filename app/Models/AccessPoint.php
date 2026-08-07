@@ -11,11 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable(['name', 'rusguard_access_point_id', 'rusguard_access_point_name', 'device_type', 'enter_device_id', 'exit_device_id', 'is_active'])]
-class Turnstile extends Model
+class AccessPoint extends Model
 {
     use HasFactory;
-
-    protected $table = 'access_points';
 
     public function enterDevice(): BelongsTo
     {

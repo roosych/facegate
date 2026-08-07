@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\PushTurnstileToDevicesJob;
+use App\Jobs\PushAccessPointToDevicesJob;
+use App\Jobs\SyncAccessPointJob;
 use App\Jobs\SyncAllJob;
-use App\Jobs\SyncTurnstileJob;
+use App\Models\AccessPoint;
 use App\Models\SyncRun;
-use App\Models\Turnstile;
 use App\Services\SyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,16 +20,16 @@ class SyncController extends Controller
 
     public function index(): View
     {
-        $turnstiles = Turnstile::with(['enterDevice', 'exitDevice'])
+        $accessPoints = AccessPoint::with(['enterDevice', 'exitDevice'])
             ->where('is_active', true)
             ->get();
 
-        return view('sync.index', compact('turnstiles'));
+        return view('sync.index', compact('accessPoints'));
     }
 
-    public function syncTurnstile(Turnstile $turnstile): JsonResponse|RedirectResponse
+    public function syncAccessPoint(AccessPoint $accessPoint): JsonResponse|RedirectResponse
     {
-        Cache::put(SyncService::SYNC_STATUS_KEY.'_'.$turnstile->id, [
+        Cache::put(SyncService::SYNC_STATUS_KEY.'_'.$accessPoint->id, [
             'status' => 'pending',
             'current' => '',
             'done' => 0,
@@ -40,13 +40,13 @@ class SyncController extends Controller
             'errors' => 0,
         ], now()->addHour());
 
-        SyncTurnstileJob::dispatch($turnstile, SyncRun::TRIGGER_MANUAL);
+        SyncAccessPointJob::dispatch($accessPoint, SyncRun::TRIGGER_MANUAL);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json(['ok' => true]);
         }
 
-        return redirect()->back()->with('success', "Sync started for \"{$turnstile->name}\".");
+        return redirect()->back()->with('success', "Sync started for \"{$accessPoint->name}\".");
     }
 
     public function syncAll(): JsonResponse|RedirectResponse
@@ -69,15 +69,15 @@ class SyncController extends Controller
         return redirect()->back();
     }
 
-    public function pushTurnstile(Turnstile $turnstile): JsonResponse|RedirectResponse
+    public function pushAccessPoint(AccessPoint $accessPoint): JsonResponse|RedirectResponse
     {
-        PushTurnstileToDevicesJob::dispatch($turnstile);
+        PushAccessPointToDevicesJob::dispatch($accessPoint);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json(['ok' => true]);
         }
 
-        return redirect()->back()->with('success', "Push to devices started for \"{$turnstile->name}\".");
+        return redirect()->back()->with('success', "Push to devices started for \"{$accessPoint->name}\".");
     }
 
     public function syncStatus(): JsonResponse
@@ -102,9 +102,9 @@ class SyncController extends Controller
         return response()->json($status);
     }
 
-    public function syncTurnstileStatus(Turnstile $turnstile): JsonResponse
+    public function syncAccessPointStatus(AccessPoint $accessPoint): JsonResponse
     {
-        $key = SyncService::SYNC_STATUS_KEY.'_'.$turnstile->id;
+        $key = SyncService::SYNC_STATUS_KEY.'_'.$accessPoint->id;
         $status = Cache::get($key, ['status' => 'idle']);
 
         if (($status['status'] ?? '') === 'done') {

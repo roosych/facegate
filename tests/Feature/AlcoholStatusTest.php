@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Models\User;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,14 +19,14 @@ class AlcoholStatusTest extends TestCase
     public function test_shows_required_employees_with_terminal_and_last_pass(): void
     {
         $employee = Employee::factory()->create(['first_name' => 'Davyd', 'last_name' => 'Ahaiev']);
-        $turnstile = Turnstile::factory()->create();
-        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $turnstile->id, 'name' => 'Post 1']);
-        $employee->turnstiles()->attach($turnstile->id);
+        $accessPoint = AccessPoint::factory()->create();
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint->id, 'name' => 'Post 1']);
+        $employee->accessPoints()->attach($accessPoint->id);
 
         AccessEvent::factory()->create([
             'employee_id' => $employee->id,
             'hikvision_terminal_id' => $terminal->id,
-            'access_point_id' => $turnstile->id,
+            'access_point_id' => $accessPoint->id,
             'event_time' => now()->subMinutes(10),
             'raw_data' => ['alcoholDetectionInfo' => ['result' => 'normal', 'concentrationInfo' => ['concentrationValue' => 0]]],
         ]);

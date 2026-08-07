@@ -4,9 +4,9 @@ namespace Tests\Feature\Jobs;
 
 use App\Jobs\FetchHikvisionEventsJob;
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Services\HikvisionEventIngestService;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,11 +22,11 @@ class FetchHikvisionEventsJobAlcoholTest extends TestCase
     {
         $employee = Employee::factory()->create(['emp_code' => 555]);
 
-        $turnstile1 = Turnstile::factory()->create();
-        $turnstile2 = Turnstile::factory()->create();
-        $terminal1 = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $turnstile1->id, 'ip' => '127.0.0.1']);
-        $terminal2 = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $turnstile2->id, 'ip' => '127.0.0.2']);
-        $employee->turnstiles()->attach([$turnstile1->id, $turnstile2->id]);
+        $accessPoint1 = AccessPoint::factory()->create();
+        $accessPoint2 = AccessPoint::factory()->create();
+        $terminal1 = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint1->id, 'ip' => '127.0.0.1']);
+        $terminal2 = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint2->id, 'ip' => '127.0.0.2']);
+        $employee->accessPoints()->attach([$accessPoint1->id, $accessPoint2->id]);
 
         Http::fake([
             '*/ISAPI/AccessControl/AcsEvent*' => Http::response([
@@ -52,7 +52,7 @@ class FetchHikvisionEventsJobAlcoholTest extends TestCase
             ->andReturn([$employee->rusguard_uuid => true]);
 
         $job = new FetchHikvisionEventsJob($terminal1, now()->subHour(), now());
-        $job->handle($rusGuardDb, new HikvisionEventIngestService());
+        $job->handle($rusGuardDb, new HikvisionEventIngestService);
 
         $this->assertSame(1, AccessEvent::count());
         $this->assertTrue(AccessEvent::first()->alcoholPassed());
@@ -71,8 +71,8 @@ class FetchHikvisionEventsJobAlcoholTest extends TestCase
 
     public function test_skips_events_without_alcohol_detection_info(): void
     {
-        $turnstile = Turnstile::factory()->create();
-        $terminal = HikvisionTerminal::factory()->create(['access_point_id' => $turnstile->id, 'ip' => '127.0.0.1']);
+        $accessPoint = AccessPoint::factory()->create();
+        $terminal = HikvisionTerminal::factory()->create(['access_point_id' => $accessPoint->id, 'ip' => '127.0.0.1']);
 
         Http::fake([
             '*/ISAPI/AccessControl/AcsEvent*' => Http::response([
@@ -90,7 +90,7 @@ class FetchHikvisionEventsJobAlcoholTest extends TestCase
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         $rusGuardDb->shouldNotReceive('getEmployeesRequiringAlcoholTest');
 
-        (new FetchHikvisionEventsJob($terminal, now()->subHour(), now()))->handle($rusGuardDb, new HikvisionEventIngestService());
+        (new FetchHikvisionEventsJob($terminal, now()->subHour(), now()))->handle($rusGuardDb, new HikvisionEventIngestService);
 
         $this->assertSame(0, AccessEvent::count());
     }

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Employee;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class EmployeeController extends Controller
 {
@@ -13,7 +13,7 @@ class EmployeeController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
 
-        $employees = Employee::with(['turnstiles', 'keys'])
+        $employees = Employee::with(['accessPoints', 'keys'])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $like = '%'.$search.'%';
@@ -46,7 +46,7 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee): View
     {
-        $employee->load(['turnstiles', 'syncLogs' => fn ($q) => $q->latest()->limit(20)]);
+        $employee->load(['accessPoints', 'syncLogs' => fn ($q) => $q->latest()->limit(20)]);
 
         $recentEvents = $employee->accessEvents()
             ->with('device')

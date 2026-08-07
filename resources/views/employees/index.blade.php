@@ -63,11 +63,11 @@
                             @endforelse
                         </td>
                         <td class="px-4 py-3" x-data="{ open: false }">
-                            @if($employee->turnstiles->count() > 0)
+                            @if($employee->accessPoints->count() > 0)
                                 <button
                                     @click="open = true"
                                     class="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-full hover:bg-indigo-100 transition-colors"
-                                >{{ $employee->turnstiles->count() }}</button>
+                                >{{ $employee->accessPoints->count() }}</button>
 
                                 <div
                                     x-show="open"
@@ -97,8 +97,8 @@
                                         </div>
                                         <div class="overflow-y-auto flex-1 min-h-0 px-5 py-3">
                                             <div class="divide-y divide-gray-50">
-                                                @foreach($employee->turnstiles as $turnstile)
-                                                    <div class="py-2.5 text-sm text-gray-700">{{ $turnstile->name }}</div>
+                                                @foreach($employee->accessPoints as $accessPoint)
+                                                    <div class="py-2.5 text-sm text-gray-700">{{ $accessPoint->name }}</div>
                                                 @endforeach
                                             </div>
                                         </div>

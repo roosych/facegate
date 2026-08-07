@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccessPoint;
 use App\Models\Device;
 use App\Models\Employee;
-use App\Models\Turnstile;
 use App\Services\ZKBioService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Throwable;
 
@@ -84,9 +83,9 @@ class DeviceController extends Controller
             'access_point_id' => ['required', 'integer', 'exists:access_points,id'],
         ]);
 
-        $turnstile = Turnstile::with('employees.keys')->findOrFail($validated['access_point_id']);
+        $accessPoint = AccessPoint::with('employees.keys')->findOrFail($validated['access_point_id']);
 
-        $employees = $turnstile->employees;
+        $employees = $accessPoint->employees;
 
         if ($employees->isEmpty()) {
             return redirect()->route('devices.index')->with('error', 'No employees found for this access point.');
@@ -99,16 +98,16 @@ class DeviceController extends Controller
         }
 
         // Remove from ZKBio employees who are no longer in this access point
-        // (and not linked to this device via other turnstiles)
+        // (and not linked to this device via other access points)
         $pushIds = $employees->pluck('id')->all();
 
-        $otherTurnstileIds = Turnstile::where('enter_device_id', $device->id)
+        $otherAccessPointIds = AccessPoint::where('enter_device_id', $device->id)
             ->orWhere('exit_device_id', $device->id)
             ->pluck('id');
 
-        $keepIds = $otherTurnstileIds->isNotEmpty()
+        $keepIds = $otherAccessPointIds->isNotEmpty()
             ? \DB::table('access_point_employee')
-                ->whereIn('access_point_id', $otherTurnstileIds)
+                ->whereIn('access_point_id', $otherAccessPointIds)
                 ->pluck('employee_id')
                 ->all()
             : [];
@@ -180,7 +179,7 @@ class DeviceController extends Controller
             }
         }
 
-        $pointName = $turnstile->rusguard_access_point_name ?: $turnstile->name;
+        $pointName = $accessPoint->rusguard_access_point_name ?: $accessPoint->name;
         $message = "Pushed {$pushed} employees from \"{$pointName}\" to {$device->name}.";
 
         if (! empty($errorMessages)) {

@@ -82,7 +82,7 @@ RusGuard живёт снаружи и в docker-compose не входит — к
 
 - `employees` — сотрудники, `emp_code` это их номер на терминалах, `rusguard_uuid` — связь с RusGuard
 - `employee_keys` — карты (у человека их может быть несколько)
-- `access_points` — точки доступа (в коде модель называется `Turnstile`)
+- `access_points` — точки доступа, модель `AccessPoint`
 - `hikvision_terminals` — терминалы, `sync_stats` хранит итог последнего синка, `last_push_at` — когда терминал последний раз выходил на связь
 - `devices` — ZKT-терминалы
 - `access_events` — события с алкотестом
@@ -324,7 +324,7 @@ php artisan hikvision:fetch-events --minutes=60 # добрать события 
 php artisan hikvision:configure-webhook [id]   # прописать вебхук в терминал
 php artisan rusguard:poll-audit                # разово проверить журнал RusGuard
 php artisan alcohol:clear-expired-skip         # снять истёкшие отсрочки
-php artisan facegate:sync --turnstile=<id>     # синк на ZKT через ZKBio
+php artisan facegate:sync --access-point=<id>  # синк на ZKT через ZKBio
 ```
 
 ### Если что-то не работает

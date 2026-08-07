@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Services;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncLog;
-use App\Models\Turnstile;
 use App\Services\HikvisionSyncService;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,14 +38,14 @@ class HikvisionSyncFaceRetryTest extends TestCase
         imagejpeg($image, $absolute, 90);
         imagedestroy($image);
 
-        $turnstile = Turnstile::factory()->create(['is_active' => true]);
+        $accessPoint = AccessPoint::factory()->create(['is_active' => true]);
         $this->terminal = HikvisionTerminal::factory()->create([
             'ip' => '127.0.0.1',
-            'access_point_id' => $turnstile->id,
+            'access_point_id' => $accessPoint->id,
         ]);
 
         $this->employee = Employee::factory()->create(['emp_code' => 10, 'photo_path' => $this->photoPath]);
-        $this->employee->turnstiles()->attach($turnstile->id);
+        $this->employee->accessPoints()->attach($accessPoint->id);
 
         $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
         $rusGuardDb->shouldReceive('getEmployeesRequiringAlcoholTest')->andReturn([]);

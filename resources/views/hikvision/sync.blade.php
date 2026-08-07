@@ -42,9 +42,9 @@
 
                         <p class="text-xs text-gray-500 font-mono mb-2">{{ $terminal->protocol }}://{{ $terminal->ip }}:{{ $terminal->port }}</p>
 
-                        @if($terminal->turnstile)
+                        @if($terminal->accessPoint)
                             <div class="mb-3">
-                                <span class="inline-flex px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{{ $terminal->turnstile->name }}</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{{ $terminal->accessPoint->name }}</span>
                             </div>
                         @else
                             <p class="text-xs text-amber-600 mb-3">No access point linked — assign one in terminal settings.</p>

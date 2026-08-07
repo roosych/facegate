@@ -13,9 +13,9 @@ class HikvisionTerminal extends Model
 {
     use HasFactory;
 
-    public function turnstile(): BelongsTo
+    public function accessPoint(): BelongsTo
     {
-        return $this->belongsTo(Turnstile::class, 'access_point_id');
+        return $this->belongsTo(AccessPoint::class, 'access_point_id');
     }
 
     public function syncLogs(): HasMany

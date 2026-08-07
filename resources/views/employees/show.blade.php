@@ -23,7 +23,7 @@
                 <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">RusGuard UUID</dt><dd class="text-gray-700 font-mono text-xs mt-0.5 break-all">{{ $employee->rusguard_uuid }}</dd></div>
                 <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Card No</dt><dd class="text-gray-700 font-mono text-right">{{ $employee->card_no ?? '—' }}</dd></div>
                 <div class="py-2 flex justify-between gap-4"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Last Sync</dt><dd class="text-gray-700 text-right">{{ $employee->last_synced_at?->diffForHumans() ?? 'Never' }}</dd></div>
-                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Access Points</dt><dd class="text-gray-700 mt-0.5">{{ $employee->turnstiles->pluck('name')->join(', ') ?: '—' }}</dd></div>
+                <div class="py-2"><dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Access Points</dt><dd class="text-gray-700 mt-0.5">{{ $employee->accessPoints->pluck('name')->join(', ') ?: '—' }}</dd></div>
             </dl>
         </div>
 

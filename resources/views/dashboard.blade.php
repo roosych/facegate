@@ -12,7 +12,7 @@
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
             <p class="text-xs text-gray-400 font-medium">Devices</p>
             <p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['devices'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['turnstiles'] }} access points</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['accessPoints'] }} access points</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
             <p class="text-xs text-gray-400 font-medium">Events Today</p>
@@ -181,7 +181,7 @@
                                 <p class="text-sm text-gray-800 truncate">
                                     {{ $event->employee?->full_name ?? 'Unknown' }}
                                 </p>
-                                <p class="text-xs text-gray-400 truncate">{{ $event->turnstile?->name ?? '—' }}</p>
+                                <p class="text-xs text-gray-400 truncate">{{ $event->accessPoint?->name ?? '—' }}</p>
                             </div>
                             <div class="text-right flex-shrink-0">
                                 <p class="text-xs text-gray-500">{{ $event->event_time->format('H:i') }}</p>

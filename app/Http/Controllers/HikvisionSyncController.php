@@ -15,7 +15,7 @@ class HikvisionSyncController extends Controller
     public function index(): View
     {
         $terminals = HikvisionTerminal::where('is_active', true)
-            ->with('turnstile:id,name')
+            ->with('accessPoint:id,name')
             ->orderBy('name')
             ->get();
 

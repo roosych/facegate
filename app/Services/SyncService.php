@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\EmployeeKey;
 use App\Models\SyncLog;
 use App\Models\SyncRun;
-use App\Models\Turnstile;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -21,34 +21,34 @@ class SyncService
     /**
      * @return array<string, mixed>
      */
-    public function syncEmployeesForTurnstile(int $turnstileId, string $triggeredBy = SyncRun::TRIGGER_MANUAL): array
+    public function syncEmployeesForAccessPoint(int $accessPointId, string $triggeredBy = SyncRun::TRIGGER_MANUAL): array
     {
         return SyncRun::track(
-            SyncRun::KIND_TURNSTILE,
+            SyncRun::KIND_ACCESS_POINT,
             $triggeredBy,
-            ['access_point_id' => $turnstileId],
-            fn (): array => $this->pullTurnstileFromRusGuard($turnstileId),
+            ['access_point_id' => $accessPointId],
+            fn (): array => $this->pullAccessPointFromRusGuard($accessPointId),
         );
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function pullTurnstileFromRusGuard(int $turnstileId): array
+    private function pullAccessPointFromRusGuard(int $accessPointId): array
     {
-        $turnstile = Turnstile::with(['enterDevice', 'exitDevice'])->findOrFail($turnstileId);
+        $accessPoint = AccessPoint::with(['enterDevice', 'exitDevice'])->findOrFail($accessPointId);
 
-        $deviceType = $this->rusGuardDb->getAccessPointDeviceType($turnstile->rusguard_access_point_id);
-        if ($deviceType !== null && $deviceType !== $turnstile->device_type) {
-            $turnstile->update(['device_type' => $deviceType]);
+        $deviceType = $this->rusGuardDb->getAccessPointDeviceType($accessPoint->rusguard_access_point_id);
+        if ($deviceType !== null && $deviceType !== $accessPoint->device_type) {
+            $accessPoint->update(['device_type' => $deviceType]);
         }
 
         $results = ['synced' => 0, 'errors' => 0, 'employees' => []];
 
-        $rgEmployees = $this->rusGuardDb->getEmployeesForAccessPoint($turnstile->rusguard_access_point_id);
+        $rgEmployees = $this->rusGuardDb->getEmployeesForAccessPoint($accessPoint->rusguard_access_point_id);
         $total = count($rgEmployees);
-        $pointName = $turnstile->rusguard_access_point_name ?: $turnstile->name;
-        $statusKey = self::SYNC_STATUS_KEY.'_'.$turnstileId;
+        $pointName = $accessPoint->rusguard_access_point_name ?: $accessPoint->name;
+        $statusKey = self::SYNC_STATUS_KEY.'_'.$accessPointId;
 
         Cache::put($statusKey, [
             'status' => 'running',
@@ -84,7 +84,7 @@ class SyncService
         }
 
         // Sync pivot — adds new, removes employees no longer in RusGuard
-        $turnstile->employees()->sync($results['employees']);
+        $accessPoint->employees()->sync($results['employees']);
 
         Cache::put($statusKey, [
             'status' => 'done',
@@ -103,7 +103,7 @@ class SyncService
     /**
      * Pull one employee from RusGuard and save to local DB only.
      * Skips writes when name, photo and keys are all unchanged.
-     * No ZKBio interaction — use pushTurnstileToDevices() for that.
+     * No ZKBio interaction — use pushAccessPointToDevices() for that.
      *
      * @param  array{uuid: string, fio: string}  $rgEmployee
      */
@@ -192,19 +192,19 @@ class SyncService
     }
 
     /**
-     * Push all employees of a turnstile to its ZKBio devices.
+     * Push all employees of an access point to its ZKBio devices.
      * Reads only from local DB — no RusGuard calls.
      *
      * @return array{synced: int, errors: int}
      */
-    public function pushTurnstileToDevices(int $turnstileId): array
+    public function pushAccessPointToDevices(int $accessPointId): array
     {
-        $turnstile = Turnstile::with(['enterDevice', 'exitDevice', 'employees.keys'])->findOrFail($turnstileId);
+        $accessPoint = AccessPoint::with(['enterDevice', 'exitDevice', 'employees.keys'])->findOrFail($accessPointId);
 
-        $devices = array_filter([$turnstile->enterDevice, $turnstile->exitDevice]);
+        $devices = array_filter([$accessPoint->enterDevice, $accessPoint->exitDevice]);
         $results = ['synced' => 0, 'errors' => 0];
-        $total = $turnstile->employees->count();
-        $pointName = $turnstile->rusguard_access_point_name ?: $turnstile->name;
+        $total = $accessPoint->employees->count();
+        $pointName = $accessPoint->rusguard_access_point_name ?: $accessPoint->name;
 
         Cache::put(self::SYNC_STATUS_KEY, [
             'status' => 'running',
@@ -220,7 +220,7 @@ class SyncService
         $jwtToken = null;
         $session = null;
 
-        foreach ($turnstile->employees as $i => $employee) {
+        foreach ($accessPoint->employees as $i => $employee) {
             Cache::put(self::SYNC_STATUS_KEY, [
                 'status' => 'running',
                 'current' => $pointName,
@@ -319,7 +319,7 @@ class SyncService
 
     /**
      * Pull all access points with employees from RusGuard in one pass,
-     * upsert turnstiles and employees into the local database.
+     * upsert access points and employees into the local database.
      *
      * @return array{points: int, synced: int, errors: int, deactivated: int, pointsDeactivated: int}
      */
@@ -360,13 +360,13 @@ class SyncService
 
         // RusGuard can return more than one $point entry for the same DriverID (e.g. two
         // AcsAccessLevels — one removed, one active — pointing at the same physical door), so
-        // updateOrCreate() below can resolve multiple entries to the same Turnstile row.
-        // Accumulate per-turnstile employee ids across all of a driverId's entries and sync()
+        // updateOrCreate() below can resolve multiple entries to the same AccessPoint row.
+        // Accumulate per-access point employee ids across all of a driverId's entries and sync()
         // once at the end — calling sync() separately per entry both loses data (each call
         // replaces the previous one's set instead of merging) and can throw a unique
-        // constraint violation when the same employee/turnstile pair gets attached twice.
-        $turnstiles = [];
-        $turnstileEmployeeIds = [];
+        // constraint violation when the same employee/access point pair gets attached twice.
+        $accessPoints = [];
+        $accessPointEmployeeIds = [];
 
         // The same employee can appear under many access points (one entry per point they
         // have access to), so without memoizing by uuid, createOrUpdateEmployee() — including
@@ -376,13 +376,13 @@ class SyncService
         $employeeCache = [];
 
         foreach ($pointsWithEmployees as $i => $point) {
-            $turnstile = Turnstile::updateOrCreate(
+            $accessPoint = AccessPoint::updateOrCreate(
                 ['rusguard_access_point_id' => $point['driverId']],
                 ['name' => $point['name'], 'rusguard_access_point_name' => $point['name'], 'device_type' => $point['deviceType'] ?? null, 'is_active' => true]
             );
 
-            $turnstiles[$turnstile->id] = $turnstile;
-            $turnstileEmployeeIds[$turnstile->id] ??= [];
+            $accessPoints[$accessPoint->id] = $accessPoint;
+            $accessPointEmployeeIds[$accessPoint->id] ??= [];
 
             foreach ($point['employees'] as $rgEmployee) {
                 Cache::put(self::SYNC_STATUS_KEY, [
@@ -414,20 +414,20 @@ class SyncService
                 }
 
                 if ($employee !== null) {
-                    $turnstileEmployeeIds[$turnstile->id][] = $employee->id;
+                    $accessPointEmployeeIds[$accessPoint->id][] = $employee->id;
                 }
 
                 $doneEmployees++;
             }
         }
 
-        foreach ($turnstileEmployeeIds as $turnstileId => $employeeIds) {
+        foreach ($accessPointEmployeeIds as $accessPointId => $employeeIds) {
             // Sync pivot: добавляет новых, отвязывает тех кого больше нет в RusGuard
-            $turnstiles[$turnstileId]->employees()->sync(array_unique($employeeIds));
+            $accessPoints[$accessPointId]->employees()->sync(array_unique($employeeIds));
         }
 
         $totals['deactivated'] = $this->deactivateEmployeesGoneFromRusGuard();
-        $totals['pointsDeactivated'] = $this->deactivateTurnstilesGoneFromRusGuard(
+        $totals['pointsDeactivated'] = $this->deactivateAccessPointsGoneFromRusGuard(
             array_column($pointsWithEmployees, 'driverId')
         );
 
@@ -446,7 +446,7 @@ class SyncService
     }
 
     /**
-     * Turnstiles are only ever created or refreshed from what RusGuard currently returns, so a
+     * AccessPoints are only ever created or refreshed from what RusGuard currently returns, so a
      * point deleted there just stops appearing and its local row stayed active forever — the
      * Check Points page listed them as "in local but not in RusGuard" and someone had to
      * deactivate each one by hand.
@@ -454,12 +454,12 @@ class SyncService
      * Deactivate rather than delete: access events reference these rows, a Hikvision terminal
      * may still be bound to one, and a point that reappears in RusGuard is reactivated anyway
      * by the updateOrCreate() above. Employee links are deliberately left in place — detaching
-     * them would empty $terminal->turnstile->employees, and the terminal sync would then read
+     * them would empty $terminal->accessPoint->employees, and the terminal sync would then read
      * that as "nobody belongs here" and wipe every person off the device.
      *
      * @param  array<int, string>  $rusGuardDriverIds  driverIds RusGuard returned this run
      */
-    private function deactivateTurnstilesGoneFromRusGuard(array $rusGuardDriverIds): int
+    private function deactivateAccessPointsGoneFromRusGuard(array $rusGuardDriverIds): int
     {
         // An empty list means RusGuard returned nothing at all — an outage or a failed query,
         // not "every access point was deleted". Deactivating the lot on that basis would take
@@ -470,16 +470,16 @@ class SyncService
 
         $known = array_flip(array_map('strtolower', $rusGuardDriverIds));
 
-        $orphans = Turnstile::where('is_active', true)
+        $orphans = AccessPoint::where('is_active', true)
             ->whereNotNull('rusguard_access_point_id')
             ->get(['id', 'rusguard_access_point_id'])
-            ->filter(fn (Turnstile $turnstile): bool => ! isset($known[strtolower($turnstile->rusguard_access_point_id)]));
+            ->filter(fn (AccessPoint $accessPoint): bool => ! isset($known[strtolower($accessPoint->rusguard_access_point_id)]));
 
         if ($orphans->isEmpty()) {
             return 0;
         }
 
-        Turnstile::whereIn('id', $orphans->pluck('id'))->update(['is_active' => false]);
+        AccessPoint::whereIn('id', $orphans->pluck('id'))->update(['is_active' => false]);
 
         return $orphans->count();
     }
@@ -505,7 +505,7 @@ class SyncService
         }
 
         foreach ($stale as $employee) {
-            $employee->turnstiles()->detach();
+            $employee->accessPoints()->detach();
         }
 
         Employee::whereIn('id', $stale->pluck('id'))->update(['is_active' => false]);
@@ -513,10 +513,10 @@ class SyncService
         return $stale->count();
     }
 
-    public function syncAllTurnstiles(): void
+    public function syncAllAccessPoints(): void
     {
-        Turnstile::where('is_active', true)->each(function (Turnstile $turnstile): void {
-            $this->syncEmployeesForTurnstile($turnstile->id);
+        AccessPoint::where('is_active', true)->each(function (AccessPoint $accessPoint): void {
+            $this->syncEmployeesForAccessPoint($accessPoint->id);
         });
     }
 

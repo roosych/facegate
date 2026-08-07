@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Models;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -37,14 +37,14 @@ class EmployeeAlcoholTest extends TestCase
     {
         $employee = Employee::factory()->create();
 
-        $enabledTurnstile = Turnstile::factory()->create();
-        $disabledTurnstile = Turnstile::factory()->create();
-        $noTerminalTurnstile = Turnstile::factory()->create();
+        $enabledAccessPoint = AccessPoint::factory()->create();
+        $disabledAccessPoint = AccessPoint::factory()->create();
+        $noTerminalAccessPoint = AccessPoint::factory()->create();
 
-        $enabledTerminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $enabledTurnstile->id]);
-        HikvisionTerminal::factory()->create(['access_point_id' => $disabledTurnstile->id, 'alcohol_params' => ['enabled' => false]]);
+        $enabledTerminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $enabledAccessPoint->id]);
+        HikvisionTerminal::factory()->create(['access_point_id' => $disabledAccessPoint->id, 'alcohol_params' => ['enabled' => false]]);
 
-        $employee->turnstiles()->attach([$enabledTurnstile->id, $disabledTurnstile->id, $noTerminalTurnstile->id]);
+        $employee->accessPoints()->attach([$enabledAccessPoint->id, $disabledAccessPoint->id, $noTerminalAccessPoint->id]);
 
         $terminals = $employee->alcoholEnabledTerminals();
 

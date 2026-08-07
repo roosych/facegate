@@ -3,14 +3,14 @@
 namespace App\Jobs;
 
 use App\Models\SyncRun;
-use App\Models\Turnstile;
+use App\Models\AccessPoint;
 use App\Services\SyncService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
-class SyncTurnstileJob implements ShouldQueue
+class SyncAccessPointJob implements ShouldQueue
 {
     use Queueable;
 
@@ -19,18 +19,18 @@ class SyncTurnstileJob implements ShouldQueue
     public int $tries = 1;
 
     public function __construct(
-        public readonly Turnstile $turnstile,
+        public readonly AccessPoint $accessPoint,
         public readonly string $triggeredBy = SyncRun::TRIGGER_MANUAL
     ) {}
 
     public function handle(SyncService $syncService): void
     {
-        $syncService->syncEmployeesForTurnstile($this->turnstile->id, $this->triggeredBy);
+        $syncService->syncEmployeesForAccessPoint($this->accessPoint->id, $this->triggeredBy);
     }
 
     public function failed(Throwable $e): void
     {
-        Cache::put(SyncService::SYNC_STATUS_KEY.'_'.$this->turnstile->id, [
+        Cache::put(SyncService::SYNC_STATUS_KEY.'_'.$this->accessPoint->id, [
             'status' => 'failed',
             'current' => '',
             'done' => 0,

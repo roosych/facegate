@@ -123,9 +123,9 @@
                             {{ $terminal->protocol }}://{{ $terminal->ip }}:{{ $terminal->port }}
                         </span>
 
-                        @if($terminal->turnstile)
+                        @if($terminal->accessPoint)
                             <span class="hidden md:inline text-xs text-gray-500 flex-shrink-0">
-                                {{ $terminal->turnstile->name }}
+                                {{ $terminal->accessPoint->name }}
                             </span>
                         @endif
 

@@ -32,7 +32,7 @@ class MonitoringController extends Controller
     {
         $kind = $request->string('kind')->toString();
 
-        $runs = SyncRun::with(['hikvisionTerminal:id,name', 'turnstile:id,name'])
+        $runs = SyncRun::with(['hikvisionTerminal:id,name', 'accessPoint:id,name'])
             ->when($kind !== '', fn ($query) => $query->where('kind', $kind))
             ->latest('started_at')
             ->paginate(50)

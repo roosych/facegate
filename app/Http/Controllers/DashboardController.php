@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Device;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncLog;
-use App\Models\Turnstile;
 use App\Services\HikvisionSyncService;
 use App\Services\SyncService;
 use Illuminate\Http\JsonResponse;
@@ -20,18 +20,18 @@ class DashboardController extends Controller
     public function index(): View
     {
         $stats = [
-            'employees'      => Employee::count(),
+            'employees' => Employee::count(),
             'active_employees' => Employee::where('is_active', true)->count(),
-            'devices'        => Device::count(),
-            'turnstiles'     => Turnstile::count(),
-            'events_today'   => AccessEvent::whereDate('event_time', today())->count(),
-            'events_week'    => AccessEvent::whereBetween('event_time', [now()->startOfWeek(), now()])->count(),
-            'last_sync'      => SyncLog::where('status', 'success')->latest()->value('created_at'),
-            'failed_syncs'   => SyncLog::where('status', 'error')->whereDate('created_at', today())->count(),
-            'no_card'        => Employee::where('is_active', true)->whereDoesntHave('keys', fn ($q) => $q->where('type', 'card'))->count(),
+            'devices' => Device::count(),
+            'accessPoints' => AccessPoint::count(),
+            'events_today' => AccessEvent::whereDate('event_time', today())->count(),
+            'events_week' => AccessEvent::whereBetween('event_time', [now()->startOfWeek(), now()])->count(),
+            'last_sync' => SyncLog::where('status', 'success')->latest()->value('created_at'),
+            'failed_syncs' => SyncLog::where('status', 'error')->whereDate('created_at', today())->count(),
+            'no_card' => Employee::where('is_active', true)->whereDoesntHave('keys', fn ($q) => $q->where('type', 'card'))->count(),
         ];
 
-        $recentEvents = AccessEvent::with(['employee', 'turnstile'])
+        $recentEvents = AccessEvent::with(['employee', 'accessPoint'])
             ->latest('event_time')
             ->limit(8)
             ->get();

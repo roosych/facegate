@@ -25,9 +25,9 @@ class Employee extends Model
         return $this->keys->where('type', 'card')->first()?->value;
     }
 
-    public function turnstiles(): BelongsToMany
+    public function accessPoints(): BelongsToMany
     {
-        return $this->belongsToMany(Turnstile::class, 'access_point_employee', 'employee_id', 'access_point_id')->withTimestamps();
+        return $this->belongsToMany(AccessPoint::class, 'access_point_employee', 'employee_id', 'access_point_id')->withTimestamps();
     }
 
     public function accessEvents(): HasMany
@@ -52,14 +52,14 @@ class Employee extends Model
     }
 
     /**
-     * Hikvision terminals, among those linked via RusGuard-synced turnstile access, that have
+     * Hikvision terminals, among those linked via RusGuard-synced access point access, that have
      * alcohol detection enabled — the set that a "skip_alcohol" push needs to reach.
      *
      * @return Collection<int, HikvisionTerminal>
      */
     public function alcoholEnabledTerminals(): Collection
     {
-        return $this->turnstiles()
+        return $this->accessPoints()
             ->with('hikvisionTerminal')
             ->get()
             ->pluck('hikvisionTerminal')

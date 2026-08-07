@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Device;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
+use App\Models\AccessPoint;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -12,13 +12,13 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Throwable;
 
-class TurnstileController extends Controller
+class AccessPointController extends Controller
 {
     public function index(Request $request): View
     {
         $search = trim((string) $request->input('search', ''));
 
-        $turnstiles = Turnstile::with([
+        $accessPoints = AccessPoint::with([
             'enterDevice',
             'exitDevice',
             'hikvisionTerminal',
@@ -39,7 +39,7 @@ class TurnstileController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'location']);
 
-        return view('turnstiles.index', compact('turnstiles', 'freeTerminals', 'search'));
+        return view('access-points.index', compact('accessPoints', 'freeTerminals', 'search'));
     }
 
     public function create(RusGuardDatabaseService $db): View
@@ -47,7 +47,7 @@ class TurnstileController extends Controller
         $devices = Device::where('is_active', true)->orderBy('name')->get();
         $accessPoints = $db->getAccessPoints();
 
-        return view('turnstiles.create', compact('devices', 'accessPoints'));
+        return view('access-points.create', compact('devices', 'accessPoints'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -61,20 +61,20 @@ class TurnstileController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        Turnstile::create($validated);
+        AccessPoint::create($validated);
 
-        return redirect()->route('access-points.index')->with('success', 'Turnstile created.');
+        return redirect()->route('access-points.index')->with('success', 'Access point created.');
     }
 
-    public function edit(Turnstile $turnstile, RusGuardDatabaseService $db): View
+    public function edit(AccessPoint $accessPoint, RusGuardDatabaseService $db): View
     {
         $devices = Device::where('is_active', true)->orderBy('name')->get();
         $accessPoints = $db->getAccessPoints();
 
-        return view('turnstiles.edit', compact('turnstile', 'devices', 'accessPoints'));
+        return view('access-points.edit', compact('accessPoint', 'devices', 'accessPoints'));
     }
 
-    public function update(Request $request, Turnstile $turnstile): RedirectResponse
+    public function update(Request $request, AccessPoint $accessPoint): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -85,9 +85,9 @@ class TurnstileController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        $turnstile->update($validated);
+        $accessPoint->update($validated);
 
-        return redirect()->route('access-points.index')->with('success', 'Turnstile updated.');
+        return redirect()->route('access-points.index')->with('success', 'Access point updated.');
     }
 
     public function checkPoints(RusGuardDatabaseService $db): JsonResponse
@@ -103,7 +103,7 @@ class TurnstileController extends Controller
         // Collection::has() key lookup isn't a case-sensitive string compare (unlike the
         // whereNotIn() below, which compares against a real uuid-typed column and is already
         // case-insensitive at the SQL level).
-        $localByDriverId = Turnstile::pluck('name', 'rusguard_access_point_id')
+        $localByDriverId = AccessPoint::pluck('name', 'rusguard_access_point_id')
             ->mapWithKeys(fn ($name, $uuid) => [strtolower($uuid) => $name]);
         $rgIds = array_column($rgPoints, 'driverId');
 
@@ -117,7 +117,7 @@ class TurnstileController extends Controller
         $rgMissingNames = array_column($notByUuid, 'name');
 
         $localByName = $rgMissingNames !== []
-            ? Turnstile::where(function ($q) use ($rgMissingNames) {
+            ? AccessPoint::where(function ($q) use ($rgMissingNames) {
                 $q->whereIn('name', $rgMissingNames)
                     ->orWhereIn('rusguard_access_point_name', $rgMissingNames);
             })->get(['id', 'name', 'rusguard_access_point_id', 'rusguard_access_point_name'])
@@ -129,7 +129,7 @@ class TurnstileController extends Controller
             fn ($p) => $localByName->get($p['name']) === null
         ));
 
-        $extra = Turnstile::where('is_active', true)
+        $extra = AccessPoint::where('is_active', true)
             ->whereNotIn('rusguard_access_point_id', $rgIds)
             ->whereNotNull('rusguard_access_point_id')
             ->get(['id', 'name', 'rusguard_access_point_id', 'rusguard_access_point_name']);
@@ -149,8 +149,8 @@ class TurnstileController extends Controller
             'driver_id' => ['required', 'string'],
         ]);
 
-        $turnstile = Turnstile::findOrFail($validated['local_id']);
-        $turnstile->update(['rusguard_access_point_id' => $validated['driver_id']]);
+        $accessPoint = AccessPoint::findOrFail($validated['local_id']);
+        $accessPoint->update(['rusguard_access_point_id' => $validated['driver_id']]);
 
         return response()->json(['success' => true]);
     }
@@ -163,18 +163,18 @@ class TurnstileController extends Controller
             'device_type' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $turnstile = Turnstile::updateOrCreate(
+        $accessPoint = AccessPoint::updateOrCreate(
             ['rusguard_access_point_id' => $validated['driver_id']],
             ['name' => $validated['name'], 'rusguard_access_point_name' => $validated['name'], 'device_type' => $validated['device_type'] ?? null, 'is_active' => true]
         );
 
-        return response()->json(['id' => $turnstile->id, 'name' => $turnstile->name]);
+        return response()->json(['id' => $accessPoint->id, 'name' => $accessPoint->name]);
     }
 
-    public function rusguardEmployees(Turnstile $turnstile, RusGuardDatabaseService $db): JsonResponse
+    public function rusguardEmployees(AccessPoint $accessPoint, RusGuardDatabaseService $db): JsonResponse
     {
         try {
-            $employees = $db->getEmployeesForAccessPoint($turnstile->rusguard_access_point_id);
+            $employees = $db->getEmployeesForAccessPoint($accessPoint->rusguard_access_point_id);
         } catch (Throwable $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -205,13 +205,13 @@ class TurnstileController extends Controller
         ]);
     }
 
-    public function checkCount(Turnstile $turnstile, RusGuardDatabaseService $db): JsonResponse
+    public function checkCount(AccessPoint $accessPoint, RusGuardDatabaseService $db): JsonResponse
     {
-        $local = $turnstile->employees()->count();
+        $local = $accessPoint->employees()->count();
 
         try {
             $rgEmployees = $db->getEmployeesForAccessPoint(
-                $turnstile->rusguard_access_point_id
+                $accessPoint->rusguard_access_point_id
             );
             $rusguard = count($rgEmployees);
         } catch (Throwable $e) {
@@ -225,16 +225,16 @@ class TurnstileController extends Controller
         ]);
     }
 
-    public function show(Turnstile $turnstile): View
+    public function show(AccessPoint $accessPoint): View
     {
-        $turnstile->load(['enterDevice', 'exitDevice', 'employees']);
+        $accessPoint->load(['enterDevice', 'exitDevice', 'employees']);
 
-        $recentEvents = $turnstile->accessEvents()
+        $recentEvents = $accessPoint->accessEvents()
             ->with(['employee', 'device'])
             ->latest('event_time')
             ->limit(50)
             ->get();
 
-        return view('turnstiles.show', compact('turnstile', 'recentEvents'));
+        return view('access-points.show', compact('accessPoint', 'recentEvents'));
     }
 }

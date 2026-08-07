@@ -90,7 +90,7 @@ class MonitoringSyncRunTest extends TestCase
     public function test_keeps_only_scalar_counters_out_of_the_returned_stats(): void
     {
         SyncRun::track(
-            SyncRun::KIND_TURNSTILE,
+            SyncRun::KIND_ACCESS_POINT,
             SyncRun::TRIGGER_CONSOLE,
             [],
             fn (): array => ['synced' => 3, 'errors' => 0, 'employees' => [['id' => 1], ['id' => 2]]],

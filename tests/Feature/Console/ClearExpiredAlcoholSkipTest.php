@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Console;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -17,11 +17,11 @@ class ClearExpiredAlcoholSkipTest extends TestCase
     {
         Http::fake(['*' => Http::response(['statusCode' => 1], 200)]);
 
-        $turnstile = Turnstile::factory()->create();
-        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $turnstile->id, 'ip' => '127.0.0.1']);
+        $accessPoint = AccessPoint::factory()->create();
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint->id, 'ip' => '127.0.0.1']);
 
         $employee = Employee::factory()->create(['emp_code' => 555, 'alcohol_skip_until' => now()->subMinute()]);
-        $employee->turnstiles()->attach($turnstile->id);
+        $employee->accessPoints()->attach($accessPoint->id);
 
         $this->artisan('alcohol:clear-expired-skip')->assertExitCode(0);
 

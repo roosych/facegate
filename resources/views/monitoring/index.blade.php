@@ -6,7 +6,7 @@
         $kinds = [
             \App\Models\SyncRun::KIND_RUSGUARD  => 'RusGuard',
             \App\Models\SyncRun::KIND_HIKVISION => 'Hikvision',
-            \App\Models\SyncRun::KIND_TURNSTILE => 'Access point',
+            \App\Models\SyncRun::KIND_ACCESS_POINT => 'Access point',
         ];
         $triggerStyles = [
             \App\Models\SyncRun::TRIGGER_SCHEDULE => 'bg-gray-100 text-gray-600',

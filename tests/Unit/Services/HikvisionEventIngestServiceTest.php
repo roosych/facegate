@@ -4,10 +4,10 @@ namespace Tests\Unit\Services;
 
 use App\Mail\AlcoholTestFailedMail;
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\Setting;
-use App\Models\Turnstile;
 use App\Services\HikvisionEventIngestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -133,10 +133,10 @@ class HikvisionEventIngestServiceTest extends TestCase
     {
         Http::fake(['*/ISAPI/AccessControl/UserInfo/SetUp*' => Http::response(['statusCode' => 1], 200)]);
 
-        $turnstile = Turnstile::factory()->create();
-        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $turnstile->id, 'ip' => '127.0.0.1']);
+        $accessPoint = AccessPoint::factory()->create();
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint->id, 'ip' => '127.0.0.1']);
         $employee = Employee::factory()->create(['emp_code' => 42]);
-        $employee->turnstiles()->attach($turnstile->id);
+        $employee->accessPoints()->attach($accessPoint->id);
 
         $service = new HikvisionEventIngestService;
 

@@ -2,11 +2,11 @@
 
 namespace Tests\Feature\Jobs;
 
-use App\Jobs\PushTurnstileToDevicesJob;
+use App\Jobs\PushAccessPointToDevicesJob;
 use App\Jobs\SyncAllJob;
 use App\Jobs\SyncHikvisionTerminalJob;
+use App\Models\AccessPoint;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Services\SyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -45,11 +45,11 @@ class SyncJobUniquenessTest extends TestCase
 
     public function test_a_failed_device_push_releases_the_shared_sync_status(): void
     {
-        $turnstile = Turnstile::factory()->create();
+        $accessPoint = AccessPoint::factory()->create();
 
         Cache::put(SyncService::SYNC_STATUS_KEY, ['status' => 'running'], now()->addHour());
 
-        (new PushTurnstileToDevicesJob($turnstile))->failed(new RuntimeException('device unreachable'));
+        (new PushAccessPointToDevicesJob($accessPoint))->failed(new RuntimeException('device unreachable'));
 
         $status = Cache::get(SyncService::SYNC_STATUS_KEY);
 

@@ -2,13 +2,13 @@
 
 namespace Database\Factories;
 
-use App\Models\Turnstile;
+use App\Models\AccessPoint;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Turnstile>
+ * @extends Factory<AccessPoint>
  */
-class TurnstileFactory extends Factory
+class AccessPointFactory extends Factory
 {
     /**
      * Define the model's default state.

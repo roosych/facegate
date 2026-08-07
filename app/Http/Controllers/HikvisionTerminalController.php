@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Services\HikvisionService;
 use App\Services\HikvisionSyncService;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +18,7 @@ class HikvisionTerminalController extends Controller
     public function index(): View
     {
         $terminals = HikvisionTerminal::withCount('syncLogs')
-            ->with('turnstile:id,name,rusguard_access_point_name')
+            ->with('accessPoint:id,name,rusguard_access_point_name')
             ->latest()
             ->paginate(20);
 
@@ -27,11 +27,11 @@ class HikvisionTerminalController extends Controller
 
     public function create(): View
     {
-        $turnstiles = Turnstile::where('is_active', true)
+        $accessPoints = AccessPoint::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'rusguard_access_point_name']);
 
-        return view('hikvision.create', compact('turnstiles'));
+        return view('hikvision.create', compact('accessPoints'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -55,11 +55,11 @@ class HikvisionTerminalController extends Controller
 
     public function edit(HikvisionTerminal $hikvision): View
     {
-        $turnstiles = Turnstile::where('is_active', true)
+        $accessPoints = AccessPoint::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'rusguard_access_point_name']);
 
-        return view('hikvision.edit', compact('hikvision', 'turnstiles'));
+        return view('hikvision.edit', compact('hikvision', 'accessPoints'));
     }
 
     public function update(Request $request, HikvisionTerminal $hikvision): RedirectResponse
@@ -231,7 +231,7 @@ class HikvisionTerminalController extends Controller
         $terminal->update(['sync_stats' => $stats]);
     }
 
-    public function linkTurnstile(Request $request, HikvisionTerminal $hikvision): JsonResponse
+    public function linkAccessPoint(Request $request, HikvisionTerminal $hikvision): JsonResponse
     {
         $validated = $request->validate([
             'access_point_id' => ['required', 'integer', 'exists:access_points,id'],
@@ -264,11 +264,11 @@ class HikvisionTerminalController extends Controller
             }
 
             $merged = array_replace($stored, [
-                'enabled'              => $liveParams['enabled'] ?? $stored['enabled'],
-                'drinkingThreshold'    => $liveParams['alcoholThreshold']['drinkingThreshold'] ?? $stored['drinkingThreshold'],
+                'enabled' => $liveParams['enabled'] ?? $stored['enabled'],
+                'drinkingThreshold' => $liveParams['alcoholThreshold']['drinkingThreshold'] ?? $stored['drinkingThreshold'],
                 'drunkennessThreshold' => $liveParams['alcoholThreshold']['drunkennessThreshold'] ?? $stored['drunkennessThreshold'],
-                'timeout'              => $liveParams['timeout'] ?? $stored['timeout'],
-                'weekPlan'             => $weekPlan,
+                'timeout' => $liveParams['timeout'] ?? $stored['timeout'],
+                'weekPlan' => $weekPlan,
             ]);
             $hikvision->update(['alcohol_params' => $merged]);
             $hikvision->refresh();
@@ -300,21 +300,21 @@ class HikvisionTerminalController extends Controller
 
         return response()->json([
             'enabled' => $enabled,
-            'pushed'  => $pushed,
+            'pushed' => $pushed,
         ]);
     }
 
     public function updateAlcoholSettings(Request $request, HikvisionTerminal $hikvision): RedirectResponse
     {
         $validated = $request->validate([
-            'drinkingThreshold'             => ['required', 'integer', 'min:0', 'max:439'],
-            'drunkennessThreshold'          => ['required', 'integer', 'min:1', 'max:440'],
-            'timeout'                       => ['required', 'integer', 'min:3', 'max:60'],
-            'weekPlan'                      => ['nullable', 'array'],
-            'weekPlan.*.enabled'            => ['boolean'],
-            'weekPlan.*.periods'            => ['nullable', 'array'],
+            'drinkingThreshold' => ['required', 'integer', 'min:0', 'max:439'],
+            'drunkennessThreshold' => ['required', 'integer', 'min:1', 'max:440'],
+            'timeout' => ['required', 'integer', 'min:3', 'max:60'],
+            'weekPlan' => ['nullable', 'array'],
+            'weekPlan.*.enabled' => ['boolean'],
+            'weekPlan.*.periods' => ['nullable', 'array'],
             'weekPlan.*.periods.*.beginTime' => ['required', 'date_format:H:i'],
-            'weekPlan.*.periods.*.endTime'   => ['required', 'date_format:H:i'],
+            'weekPlan.*.periods.*.endTime' => ['required', 'date_format:H:i'],
         ]);
 
         $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -331,7 +331,7 @@ class HikvisionTerminalController extends Controller
                 }
                 $periods[] = [
                     'beginTime' => $period['beginTime'],
-                    'endTime'   => $period['endTime'],
+                    'endTime' => $period['endTime'],
                 ];
             }
 

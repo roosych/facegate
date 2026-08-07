@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Services;
 
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
-use App\Models\Turnstile;
 use App\Services\HikvisionService;
 use App\Services\HikvisionSyncService;
 use App\Services\RusGuard\RusGuardDatabaseService;
@@ -27,18 +27,18 @@ class HikvisionSyncAlcoholFlagTest extends TestCase
     {
         parent::setUp();
 
-        $turnstile = Turnstile::factory()->create();
+        $accessPoint = AccessPoint::factory()->create();
 
         $this->terminal = HikvisionTerminal::factory()->create([
             'ip' => '127.0.0.1',
-            'access_point_id' => $turnstile->id,
+            'access_point_id' => $accessPoint->id,
             'alcohol_params' => ['enabled' => true],
         ]);
 
         // 10 — already exempt on the terminal, 20 — already required. Neither needs a write.
         foreach ([10, 20] as $code) {
             $employee = Employee::factory()->create(['emp_code' => $code, 'photo_path' => null]);
-            $employee->turnstiles()->attach($turnstile->id);
+            $employee->accessPoints()->attach($accessPoint->id);
             $this->employees[$code] = $employee;
         }
 
@@ -136,7 +136,7 @@ class HikvisionSyncAlcoholFlagTest extends TestCase
         $this->fakeTerminal([10 => HikvisionService::ALCOHOL_SKIP_FLAG, 20 => '']);
 
         $newcomer = Employee::factory()->create(['emp_code' => 30, 'photo_path' => null]);
-        $newcomer->turnstiles()->attach($this->terminal->access_point_id);
+        $newcomer->accessPoints()->attach($this->terminal->access_point_id);
 
         app(HikvisionSyncService::class)->syncEmployeesForTerminal($this->terminal);
 
