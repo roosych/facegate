@@ -57,10 +57,41 @@
                     <span class="text-sm text-gray-500">
                         last sync <span class="text-gray-900">{{ $terminal['last_sync_at'] ?? 'never' }}</span>
                     </span>
+                    <span class="text-sm text-gray-500">
+                        point <span class="{{ $terminal['access_point_stale'] ? 'text-red-600 font-medium' : 'text-gray-900' }}">{{ $terminal['access_point'] ?? 'not bound' }}</span>
+                    </span>
                     @if($terminal['push_stale'])
                         <span class="text-sm text-red-600">no push for over 5 minutes — events are only arriving via the 30-minute poll</span>
                     @endif
                 </div>
+
+                @if($terminal['access_point_stale'])
+                    {{-- Rebinding is deliberately a human decision: points differ by a single
+                         character ("… (автовесы)" vs "… (автовесы)2"), and guessing wrong pushes
+                         the wrong roster onto a physical turnstile. --}}
+                    <div class="flex flex-wrap items-center gap-3 px-5 py-3 bg-red-50" x-data="{ pointId: '' }">
+                        <span class="text-sm text-red-700">
+                            Access point is deactivated — this terminal is syncing against a roster
+                            RusGuard no longer maintains. Its people are frozen, not removed.
+                        </span>
+                        <select x-model="pointId" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">— pick the current point —</option>
+                            @foreach($accessPointOptions as $option)
+                                <option value="{{ $option->id }}">{{ $option->name }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button"
+                            :disabled="!pointId"
+                            @click="fetch('{{ route('hikvision.link-access-point', $terminal['id']) }}', {
+                                        method: 'PATCH',
+                                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                                        body: JSON.stringify({ access_point_id: Number(pointId) })
+                                    }).then(() => window.location.reload())"
+                            class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                            Rebind
+                        </button>
+                    </div>
+                @endif
             @endforeach
         </div>
     </div>

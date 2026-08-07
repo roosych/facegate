@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Jobs\SyncAllJob;
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncRun;
@@ -98,6 +99,83 @@ class MonitoringHealthTest extends TestCase
             ->json('health');
 
         $this->assertTrue($health['terminals'][0]['push_stale']);
+    }
+
+    /**
+     * A point deleted in RusGuard is deactivated, not removed, and a recreated one arrives as a
+     * separate row — so the terminal keeps syncing against a roster nobody maintains. The
+     * removal guard stops that from wiping the device, which is what makes it silent.
+     */
+    public function test_flags_a_terminal_left_on_a_deactivated_access_point(): void
+    {
+        $point = AccessPoint::factory()->create(['name' => 'Турникет База 1 (автовесы)', 'is_active' => false]);
+        HikvisionTerminal::factory()->create([
+            'name' => 'Post 1',
+            'last_push_at' => now(),
+            'access_point_id' => $point->id,
+        ]);
+
+        $health = $this->actingAs(User::factory()->create())
+            ->getJson(route('monitoring.status'))
+            ->json('health');
+
+        $this->assertTrue($health['terminals'][0]['access_point_stale']);
+        $this->assertSame('Турникет База 1 (автовесы)', $health['terminals'][0]['access_point']);
+    }
+
+    public function test_a_terminal_on_a_live_access_point_is_not_flagged(): void
+    {
+        $point = AccessPoint::factory()->create(['is_active' => true]);
+        HikvisionTerminal::factory()->create(['last_push_at' => now(), 'access_point_id' => $point->id]);
+
+        $health = $this->actingAs(User::factory()->create())
+            ->getJson(route('monitoring.status'))
+            ->json('health');
+
+        $this->assertFalse($health['terminals'][0]['access_point_stale']);
+    }
+
+    public function test_a_terminal_bound_to_nothing_is_flagged_too(): void
+    {
+        HikvisionTerminal::factory()->create(['last_push_at' => now(), 'access_point_id' => null]);
+
+        $health = $this->actingAs(User::factory()->create())
+            ->getJson(route('monitoring.status'))
+            ->json('health');
+
+        $this->assertTrue($health['terminals'][0]['access_point_stale']);
+        $this->assertNull($health['terminals'][0]['access_point']);
+    }
+
+    /**
+     * The picker must never offer a deactivated point — rebinding to one would swap a dead
+     * roster for another dead roster.
+     */
+    public function test_the_rebind_picker_offers_only_active_points(): void
+    {
+        $stale = AccessPoint::factory()->create(['name' => 'Мёртвая точка', 'is_active' => false]);
+        AccessPoint::factory()->create(['name' => 'Живая точка', 'is_active' => true]);
+
+        HikvisionTerminal::factory()->create(['last_push_at' => now(), 'access_point_id' => $stale->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('monitoring.index'))
+            ->assertOk()
+            ->assertSee('Живая точка')
+            ->assertSee('Access point is deactivated');
+    }
+
+    public function test_rebinding_moves_the_terminal_to_the_chosen_point(): void
+    {
+        $stale = AccessPoint::factory()->create(['is_active' => false]);
+        $live = AccessPoint::factory()->create(['is_active' => true]);
+        $terminal = HikvisionTerminal::factory()->create(['access_point_id' => $stale->id]);
+
+        $this->actingAs(User::factory()->create())
+            ->patchJson(route('hikvision.link-access-point', $terminal), ['access_point_id' => $live->id])
+            ->assertOk();
+
+        $this->assertSame($live->id, $terminal->fresh()->access_point_id);
     }
 
     public function test_flags_an_audit_poller_that_stopped_running(): void

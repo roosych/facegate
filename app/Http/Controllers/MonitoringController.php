@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccessEvent;
+use App\Models\AccessPoint;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncRun;
@@ -45,6 +46,9 @@ class MonitoringController extends Controller
             'queue' => $this->queueSnapshot(),
             'health' => $this->integrationHealth(),
             'problems' => $this->problems(),
+            'accessPointOptions' => AccessPoint::where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -169,7 +173,10 @@ class MonitoringController extends Controller
      */
     private function integrationHealth(): array
     {
-        $terminals = HikvisionTerminal::where('is_active', true)->orderBy('name')->get();
+        $terminals = HikvisionTerminal::where('is_active', true)
+            ->with('accessPoint:id,name,is_active')
+            ->orderBy('name')
+            ->get();
 
         $lastEvents = AccessEvent::query()
             ->whereNotNull('hikvision_terminal_id')
@@ -203,6 +210,14 @@ class MonitoringController extends Controller
                 // is down. Which end is at fault is not decidable from here; that it stopped is.
                 'push_stale' => $terminal->last_push_at === null
                     || $terminal->last_push_at->lt(now()->subMinutes(self::PUSH_SILENCE_MINUTES)),
+                'access_point' => $terminal->accessPoint?->name,
+                // A point deleted in RusGuard is deactivated here, and a recreated one comes
+                // back under a fresh DriverID as a separate row — so a terminal left on the old
+                // one keeps syncing against a roster nobody maintains any more. The removal
+                // guard stops that from wiping the device, which is exactly why it is silent:
+                // the sync reports success while the people on the terminal quietly freeze.
+                'access_point_stale' => $terminal->accessPoint === null
+                    || ! $terminal->accessPoint->is_active,
             ])->all(),
             'rusguard' => [
                 'audit_polled' => $this->ago($polledAt),
