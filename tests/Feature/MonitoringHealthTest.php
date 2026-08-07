@@ -75,13 +75,29 @@ class MonitoringHealthTest extends TestCase
 
     public function test_a_terminal_pushing_normally_is_not_flagged(): void
     {
-        HikvisionTerminal::factory()->create(['last_push_at' => now()->subMinutes(10)]);
+        // Heartbeat is every 30 seconds, so a beat or two missed is still healthy.
+        HikvisionTerminal::factory()->create(['last_push_at' => now()->subMinute()]);
 
         $health = $this->actingAs(User::factory()->create())
             ->getJson(route('monitoring.status'))
             ->json('health');
 
         $this->assertFalse($health['terminals'][0]['push_stale']);
+    }
+
+    /**
+     * The threshold that matters: an hour was generous enough to sit green through a real
+     * 22-minute tunnel outage, which is the whole failure this indicator exists to catch.
+     */
+    public function test_flags_a_gap_of_more_than_five_minutes(): void
+    {
+        HikvisionTerminal::factory()->create(['last_push_at' => now()->subMinutes(6)]);
+
+        $health = $this->actingAs(User::factory()->create())
+            ->getJson(route('monitoring.status'))
+            ->json('health');
+
+        $this->assertTrue($health['terminals'][0]['push_stale']);
     }
 
     public function test_flags_an_audit_poller_that_stopped_running(): void

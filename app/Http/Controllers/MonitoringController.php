@@ -17,6 +17,17 @@ use Illuminate\View\View;
 
 class MonitoringController extends Controller
 {
+    /**
+     * Terminals heartbeat every 30 seconds (SubscribeEvent/heartbeat in
+     * HikvisionService::configureEventListening), so five minutes is ten missed beats — far
+     * past a network blip, and still short enough to catch a real outage.
+     *
+     * This started at an hour and missed a 22-minute tunnel outage on 2026-08-07 without ever
+     * turning red. Don't go much lower: the indicator has to stay quiet across a routine
+     * container restart, or it gets ignored.
+     */
+    private const PUSH_SILENCE_MINUTES = 5;
+
     public function index(Request $request): View
     {
         $kind = $request->string('kind')->toString();
@@ -187,10 +198,11 @@ class MonitoringController extends Controller
                 'last_push_at' => $this->ago($terminal->last_push_at),
                 'last_event_at' => $this->ago($lastEvents[$terminal->id] ?? null),
                 'last_sync_at' => $this->ago($lastRuns[$terminal->id] ?? null),
-                // Push is configured on the device, so silence here is a device-side problem
-                // (its config lapsed, or it can no longer resolve/reach us) rather than ours.
+                // Silence here means the path from the device to us is broken somewhere — its
+                // own config lapsed, it cannot resolve/reach us, or the tunnel in front of us
+                // is down. Which end is at fault is not decidable from here; that it stopped is.
                 'push_stale' => $terminal->last_push_at === null
-                    || $terminal->last_push_at->lt(now()->subHour()),
+                    || $terminal->last_push_at->lt(now()->subMinutes(self::PUSH_SILENCE_MINUTES)),
             ])->all(),
             'rusguard' => [
                 'audit_polled' => $this->ago($polledAt),

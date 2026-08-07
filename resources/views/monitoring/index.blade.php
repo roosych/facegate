@@ -58,7 +58,7 @@
                         last sync <span class="text-gray-900">{{ $terminal['last_sync_at'] ?? 'never' }}</span>
                     </span>
                     @if($terminal['push_stale'])
-                        <span class="text-sm text-red-600">no push for over an hour — events are only arriving via the 30-minute poll</span>
+                        <span class="text-sm text-red-600">no push for over 5 minutes — events are only arriving via the 30-minute poll</span>
                     @endif
                 </div>
             @endforeach
