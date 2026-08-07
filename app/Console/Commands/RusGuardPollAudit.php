@@ -24,6 +24,11 @@ class RusGuardPollAudit extends Command
         $cursor = DB::table('rusguard_audit_cursor')->where('id', 1)->value('last_audit_id');
         $latestId = $rusGuardDb->getLatestAuditId();
 
+        // Stamped after the read succeeds, so it doubles as "RusGuard answered us". Every
+        // path below can return without advancing the cursor — an idle audit log is the
+        // normal case — which left nothing at all recording that the poller still runs.
+        DB::table('rusguard_audit_cursor')->where('id', 1)->update(['polled_at' => now()]);
+
         // First run (or a fresh table): jump straight to "now" instead of replaying the
         // entire audit history through a full resync.
         if ($cursor === null) {

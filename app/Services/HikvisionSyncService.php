@@ -18,7 +18,7 @@ class HikvisionSyncService
     private const LOG_FLUSH_THRESHOLD = 200;
 
     /** Signature standing in for "there is no photo to push at all". */
-    private const NO_LOCAL_PHOTO = 'no-local-photo';
+    public const NO_LOCAL_PHOTO = 'no-local-photo';
 
     /** @var array<int, array<string, mixed>> */
     private array $pendingLogs = [];

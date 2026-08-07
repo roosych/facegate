@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats'])]
+#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats', 'last_push_at'])]
 class HikvisionTerminal extends Model
 {
     use HasFactory;
@@ -41,13 +41,13 @@ class HikvisionTerminal extends Model
             'drunkennessThreshold' => 80,
             'timeout' => 20,
             'weekPlan' => [
-                'monday'    => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
-                'tuesday'   => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
+                'monday' => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
+                'tuesday' => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
                 'wednesday' => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
-                'thursday'  => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
-                'friday'    => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
-                'saturday'  => ['enabled' => false, 'periods' => [['beginTime' => '09:00', 'endTime' => '14:00']]],
-                'sunday'    => ['enabled' => false, 'periods' => [['beginTime' => '09:00', 'endTime' => '14:00']]],
+                'thursday' => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
+                'friday' => ['enabled' => true,  'periods' => [['beginTime' => '08:00', 'endTime' => '18:00']]],
+                'saturday' => ['enabled' => false, 'periods' => [['beginTime' => '09:00', 'endTime' => '14:00']]],
+                'sunday' => ['enabled' => false, 'periods' => [['beginTime' => '09:00', 'endTime' => '14:00']]],
             ],
         ];
     }
@@ -78,6 +78,7 @@ class HikvisionTerminal extends Model
             'port' => 'integer',
             'alcohol_params' => 'array',
             'sync_stats' => 'array',
+            'last_push_at' => 'datetime',
         ];
     }
 }

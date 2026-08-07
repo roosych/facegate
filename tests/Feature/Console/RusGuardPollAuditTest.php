@@ -48,6 +48,31 @@ class RusGuardPollAuditTest extends TestCase
         Bus::assertNothingDispatched();
     }
 
+    /**
+     * An idle audit log is the normal case, and it leaves the cursor untouched — so without
+     * its own timestamp there is nothing to distinguish "nothing happened" from "the poller
+     * stopped running", which is what the monitoring page has to tell apart.
+     */
+    public function test_records_the_poll_even_when_there_is_nothing_new(): void
+    {
+        Bus::fake();
+        DB::table('rusguard_audit_cursor')->where('id', 1)->update([
+            'last_audit_id' => 500,
+            'polled_at' => now()->subHour(),
+        ]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getLatestAuditId')->once()->andReturn(500);
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        $this->artisan('rusguard:poll-audit')->assertExitCode(0);
+
+        $cursor = DB::table('rusguard_audit_cursor')->where('id', 1)->first();
+
+        $this->assertTrue(now()->diffInSeconds($cursor->polled_at, true) < 5);
+        $this->assertSame(500, $cursor->last_audit_id);
+    }
+
     public function test_resyncs_when_relevant_events_found(): void
     {
         Bus::fake();

@@ -39,6 +39,11 @@ class HikvisionEventWebhookController extends Controller
             abort(403);
         }
 
+        // Stamp before parsing: a heartbeat carries no event data but still proves the
+        // terminal's push config is alive, which is exactly what the monitoring page needs
+        // in order to tell "quiet door" apart from "push silently stopped".
+        $terminal->forceFill(['last_push_at' => now()])->save();
+
         // Always log the raw payload, regardless of whether parsing below succeeds — the
         // exact shape of AlcoholDetectionEvent isn't documented anywhere, so this is how we
         // find out what the device actually sends.

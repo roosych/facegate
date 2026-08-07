@@ -64,6 +64,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sync/all', [SyncController::class, 'syncAll'])->name('sync.all');
 
     Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
+    Route::get('/monitoring/status', [MonitoringController::class, 'status'])->name('monitoring.status');
+    Route::post('/monitoring/failed-jobs/{uuid}/retry', [MonitoringController::class, 'retryFailedJob'])->name('monitoring.failed-jobs.retry');
+    Route::post('/monitoring/failed-jobs/{uuid}/forget', [MonitoringController::class, 'forgetFailedJob'])->name('monitoring.failed-jobs.forget');
+    Route::post('/monitoring/terminals/{terminal}/face-problems/clear', [MonitoringController::class, 'clearFaceProblems'])->name('monitoring.face-problems.clear');
 
     Route::get('/logs', [SyncLogController::class, 'index'])->name('logs.index');
 
