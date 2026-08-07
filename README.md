@@ -281,10 +281,20 @@ docker exec zkbio_app chown -R www-data:www-data storage bootstrap/cache
 **5. Кэши**
 
 ```bash
-docker exec zkbio_app php artisan config:cache
-docker exec zkbio_app php artisan route:cache
-docker exec zkbio_app php artisan view:cache
+docker exec -u www-data zkbio_app php artisan config:cache
+docker exec -u www-data zkbio_app php artisan route:cache
+docker exec -u www-data zkbio_app php artisan view:cache
 ```
+
+**`-u www-data` здесь обязателен, и это не косметика.** `docker exec` без него работает от root,
+а php-fpm обслуживает запросы от `www-data`. Артизан создаст `storage/logs/laravel.log` и
+скомпилированные вью с владельцем root — и веб перестанет в них писать. Симптом при этом
+максимально запутанный: страницы отдают **500 без единой строчки в логе**, потому что упасть
+пытается сам логгер. Мы на это наступили: вебхук отдавал 500 на каждый POST терминала, а
+`last_push_at` в мониторинге при этом бодро обновлялся — он проставляется в самом начале
+контроллера, до того как обработка успевает сломаться.
+
+Если уже наступили — лечится тем же `chown` из пункта 4.
 
 **6. Первый пользователь**
 
@@ -348,17 +358,33 @@ docker exec zkbio_app php artisan hikvision:sync-all
 
 ```bash
 git pull
-docker exec zkbio_app composer install --no-dev --optimize-autoloader
-docker exec zkbio_app php artisan migrate --force
+docker exec -u www-data zkbio_app composer install --no-dev --optimize-autoloader
+docker exec -u www-data zkbio_app php artisan migrate --force
 docker run --rm -v "$PWD":/app -w /app node:22-alpine sh -c "npm ci && npm run build"
-docker exec zkbio_app php artisan config:cache && docker exec zkbio_app php artisan route:cache && docker exec zkbio_app php artisan view:cache
-docker exec zkbio_queue php artisan queue:restart
+docker exec -u www-data zkbio_app php artisan config:cache && docker exec -u www-data zkbio_app php artisan route:cache && docker exec -u www-data zkbio_app php artisan view:cache
+docker exec -u www-data zkbio_queue php artisan queue:restart
 docker restart zkbio_app
+
+# Подстраховка: git pull и npm запускались от root и могли оставить файлы, недоступные веб-серверу
+docker exec zkbio_app chown -R www-data:www-data storage bootstrap/cache
 ```
 
-Два последних шага обязательны и по одной и той же причине: и воркер очереди, и php-fpm держат
-код в памяти. Без перезапуска синк отработает старым кодом и отчитается об успехе — ошибки не
-будет, будет неправильное поведение.
+Про `-u www-data` — см. пункт 5 развёртывания. Без него артизан пишет кэши и лог от root, и веб
+начинает отдавать 500 вообще без записей в логе.
+
+Перезапуск двух последних сервисов обязателен и по одной и той же причине: и воркер очереди, и
+php-fpm держат код в памяти. Без перезапуска синк отработает старым кодом и отчитается об
+успехе — ошибки не будет, будет неправильное поведение.
+
+**После обновления проверять не только `/monitoring`, но и коды ответов вебхука:**
+
+```bash
+docker logs --since=2m zkbio_nginx 2>&1 | grep -oP 'POST /api/hikvision\S+ HTTP/1\.\d" \K\d+' | sort | uniq -c
+```
+
+Должны быть `200`. Индикатор push на `/monitoring` зелёный даже когда терминал получает 500 —
+`last_push_at` проставляется до разбора запроса, поэтому он подтверждает «терминал достучался»,
+а не «событие обработано».
 
 ---
 
@@ -411,6 +437,22 @@ curl -s --digest -u admin:<пароль> http://<ip-терминала>/ISAPI/Ev
 Если URL на месте, а событий нет — проблема на нашей стороне сети, не на терминале.
 
 Пока push молчит, события всё равно приходят, но с задержкой до 30 минут — не потеряются.
+
+**Индикатор push зелёный, а событий всё равно нет** — самый неприятный случай, потому что
+мониторинг тут не помощник. `last_push_at` проставляется в первой же строке контроллера, поэтому
+он горит зелёным и когда терминал получает в ответ 500. Смотреть надо коды ответов:
+
+```bash
+docker logs --since=5m facegate_nginx 2>&1 | grep -oP 'POST /api/hikvision\S+ HTTP/1\.\d" \K\d+' | sort | uniq -c
+```
+
+Сплошные `500` при пустом `laravel.log` — почти наверняка права: артизан запускали от root, он
+создал лог и скомпилированные вью с владельцем root, и php-fpm под `www-data` больше не может в
+них писать. Падает сам логгер, поэтому и записи об ошибке не появляется. Лечение:
+
+```bash
+docker exec facegate_app chown -R www-data:www-data storage bootstrap/cache
+```
 
 **Синк падает** — `/monitoring`, блок очереди: там текст ошибки и кнопка перезапуска. Терминал
 недоступен по сети — самая частая причина.
