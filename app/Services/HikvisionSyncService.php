@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncLog;
+use App\Models\SyncRun;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -30,7 +31,20 @@ class HikvisionSyncService
      *
      * @return array{synced: int, removed: int, errors: int, faces: int, cards: int, guestsSkipped: int, alcoholRequired: int, alcoholSkipped: int, alcoholFailed: int, removalSkipped: string|null}
      */
-    public function syncEmployeesForTerminal(HikvisionTerminal $terminal): array
+    public function syncEmployeesForTerminal(HikvisionTerminal $terminal, string $triggeredBy = SyncRun::TRIGGER_MANUAL): array
+    {
+        return SyncRun::track(
+            SyncRun::KIND_HIKVISION,
+            $triggeredBy,
+            ['hikvision_terminal_id' => $terminal->id],
+            fn (): array => $this->pushEmployeesToTerminal($terminal),
+        );
+    }
+
+    /**
+     * @return array{synced: int, removed: int, errors: int, faces: int, cards: int, guestsSkipped: int, alcoholRequired: int, alcoholSkipped: int, alcoholFailed: int, removalSkipped: string|null}
+     */
+    private function pushEmployeesToTerminal(HikvisionTerminal $terminal): array
     {
         $service = new HikvisionService($terminal);
 

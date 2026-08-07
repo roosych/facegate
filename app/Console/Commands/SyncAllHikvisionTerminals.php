@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\SyncHikvisionTerminalJob;
 use App\Models\HikvisionTerminal;
+use App\Models\SyncRun;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -17,7 +18,7 @@ class SyncAllHikvisionTerminals extends Command
         $terminals = HikvisionTerminal::where('is_active', true)->get();
 
         foreach ($terminals as $terminal) {
-            SyncHikvisionTerminalJob::dispatch($terminal);
+            SyncHikvisionTerminalJob::dispatch($terminal, SyncRun::TRIGGER_SCHEDULE);
         }
 
         $this->info("Queued sync for {$terminals->count()} terminal(s).");

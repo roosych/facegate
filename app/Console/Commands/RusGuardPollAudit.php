@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\SyncAllJob;
 use App\Jobs\SyncHikvisionTerminalJob;
 use App\Models\HikvisionTerminal;
+use App\Models\SyncRun;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use App\Services\SyncService;
 use Illuminate\Console\Attributes\Description;
@@ -67,10 +68,10 @@ class RusGuardPollAudit extends Command
             // this deployment ever moves beyond a single queue worker.
             $terminalJobs = HikvisionTerminal::where('is_active', true)
                 ->get()
-                ->map(fn (HikvisionTerminal $terminal) => new SyncHikvisionTerminalJob($terminal))
+                ->map(fn (HikvisionTerminal $terminal) => new SyncHikvisionTerminalJob($terminal, SyncRun::TRIGGER_AUDIT))
                 ->all();
 
-            Bus::chain([new SyncAllJob, ...$terminalJobs])->dispatch();
+            Bus::chain([new SyncAllJob(SyncRun::TRIGGER_AUDIT), ...$terminalJobs])->dispatch();
         }
 
         DB::table('rusguard_audit_cursor')->where('id', 1)->update(['last_audit_id' => $latestId, 'updated_at' => now()]);

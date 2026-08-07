@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Jobs\SyncHikvisionTerminalJob;
 use App\Models\HikvisionTerminal;
+use App\Models\SyncRun;
 use App\Services\HikvisionSyncService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
@@ -24,7 +24,7 @@ class HikvisionSyncController extends Controller
 
     public function syncTerminal(HikvisionTerminal $hikvision): JsonResponse
     {
-        dispatch(new SyncHikvisionTerminalJob($hikvision));
+        dispatch(new SyncHikvisionTerminalJob($hikvision, SyncRun::TRIGGER_MANUAL));
 
         Cache::put(HikvisionSyncService::SYNC_STATUS_KEY.'_'.$hikvision->id, [
             'status' => 'queued',

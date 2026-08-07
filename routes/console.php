@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\SyncAllJob;
+use App\Models\SyncRun;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,6 +11,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('sync-logs:prune')->daily();
+Schedule::command('model:prune', ['--model' => [SyncRun::class]])->daily();
 Schedule::command('queue:prune-failed', ['--hours' => 168])->daily();
 Schedule::command('alcohol:clear-expired-skip')->everyFiveMinutes();
 
@@ -34,4 +36,4 @@ Schedule::command('rusguard:poll-audit')->everyMinute()->withoutOverlapping();
 // that already costs ~30s every 15 minutes — cheap enough to just always run. ShouldBeUnique
 // on SyncAllJob drops this if one is already queued, and the 15-minute push above carries the
 // results on to the terminals.
-Schedule::job(new SyncAllJob)->hourly();
+Schedule::job(new SyncAllJob(SyncRun::TRIGGER_SCHEDULE))->hourly();

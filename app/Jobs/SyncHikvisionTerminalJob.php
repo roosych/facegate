@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\HikvisionTerminal;
+use App\Models\SyncRun;
 use App\Services\HikvisionSyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,7 +24,10 @@ class SyncHikvisionTerminalJob implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = 1800;
 
-    public function __construct(public readonly HikvisionTerminal $terminal) {}
+    public function __construct(
+        public readonly HikvisionTerminal $terminal,
+        public readonly string $triggeredBy = SyncRun::TRIGGER_MANUAL
+    ) {}
 
     /**
      * One in-flight sync per terminal. Both the 15-minute schedule and the RusGuard
@@ -41,7 +45,7 @@ class SyncHikvisionTerminalJob implements ShouldBeUnique, ShouldQueue
         // face photos via GD — comfortably exceeds the default 128M CLI memory_limit.
         ini_set('memory_limit', '512M');
 
-        $syncService->syncEmployeesForTerminal($this->terminal);
+        $syncService->syncEmployeesForTerminal($this->terminal, $this->triggeredBy);
     }
 
     public function failed(Throwable $e): void

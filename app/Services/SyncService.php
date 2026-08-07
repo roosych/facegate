@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Employee;
 use App\Models\EmployeeKey;
 use App\Models\SyncLog;
+use App\Models\SyncRun;
 use App\Models\Turnstile;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Support\Facades\Cache;
@@ -20,7 +21,20 @@ class SyncService
     /**
      * @return array<string, mixed>
      */
-    public function syncEmployeesForTurnstile(int $turnstileId): array
+    public function syncEmployeesForTurnstile(int $turnstileId, string $triggeredBy = SyncRun::TRIGGER_MANUAL): array
+    {
+        return SyncRun::track(
+            SyncRun::KIND_TURNSTILE,
+            $triggeredBy,
+            ['access_point_id' => $turnstileId],
+            fn (): array => $this->pullTurnstileFromRusGuard($turnstileId),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pullTurnstileFromRusGuard(int $turnstileId): array
     {
         $turnstile = Turnstile::with(['enterDevice', 'exitDevice'])->findOrFail($turnstileId);
 
@@ -311,7 +325,20 @@ class SyncService
      */
     public const SYNC_STATUS_KEY = 'sync_all_status';
 
-    public function syncAllFromRusGuard(): array
+    public function syncAllFromRusGuard(string $triggeredBy = SyncRun::TRIGGER_MANUAL): array
+    {
+        return SyncRun::track(
+            SyncRun::KIND_RUSGUARD,
+            $triggeredBy,
+            [],
+            fn (): array => $this->pullEverythingFromRusGuard(),
+        );
+    }
+
+    /**
+     * @return array{points: int, synced: int, errors: int, deactivated: int, pointsDeactivated: int}
+     */
+    private function pullEverythingFromRusGuard(): array
     {
         $pointsWithEmployees = $this->rusGuardDb->getAccessPointsWithEmployees();
 

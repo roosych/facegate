@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\SyncRun;
 use App\Models\Turnstile;
 use App\Services\SyncService;
 use Illuminate\Console\Attributes\Description;
@@ -61,7 +62,7 @@ class FacegateSync extends Command
         $this->info("Syncing: {$turnstile->name}...");
 
         try {
-            $results = $this->syncService->syncEmployeesForTurnstile($turnstile->id);
+            $results = $this->syncService->syncEmployeesForTurnstile($turnstile->id, SyncRun::TRIGGER_CONSOLE);
 
             $this->line("  Synced: {$results['synced']}  Errors: {$results['errors']}");
         } catch (Throwable $e) {

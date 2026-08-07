@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\SyncRun;
 use App\Services\SyncService;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,9 +24,11 @@ class SyncAllJob implements ShouldBeUnique, ShouldQueue
      */
     public int $uniqueFor = 4200;
 
+    public function __construct(public readonly string $triggeredBy = SyncRun::TRIGGER_MANUAL) {}
+
     public function handle(SyncService $syncService): void
     {
-        $syncService->syncAllFromRusGuard();
+        $syncService->syncAllFromRusGuard($this->triggeredBy);
     }
 
     public function failed(Throwable $e): void

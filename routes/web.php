@@ -8,6 +8,7 @@ use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\HikvisionSyncController;
 use App\Http\Controllers\HikvisionTerminalController;
+use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RusGuardController;
 use App\Http\Controllers\SyncController;
@@ -61,6 +62,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sync/turnstile/{turnstile}/status', [SyncController::class, 'syncTurnstileStatus'])->name('sync.turnstile.status');
     Route::post('/sync/turnstile/{turnstile}/push', [SyncController::class, 'pushTurnstile'])->name('sync.push-turnstile');
     Route::post('/sync/all', [SyncController::class, 'syncAll'])->name('sync.all');
+
+    Route::get('/monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
 
     Route::get('/logs', [SyncLogController::class, 'index'])->name('logs.index');
 

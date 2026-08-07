@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\PushTurnstileToDevicesJob;
 use App\Jobs\SyncAllJob;
 use App\Jobs\SyncTurnstileJob;
+use App\Models\SyncRun;
 use App\Models\Turnstile;
 use App\Services\SyncService;
 use Illuminate\Http\JsonResponse;
@@ -39,7 +40,7 @@ class SyncController extends Controller
             'errors' => 0,
         ], now()->addHour());
 
-        SyncTurnstileJob::dispatch($turnstile);
+        SyncTurnstileJob::dispatch($turnstile, SyncRun::TRIGGER_MANUAL);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json(['ok' => true]);
@@ -59,7 +60,7 @@ class SyncController extends Controller
             'errors' => 0,
         ], now()->addHour());
 
-        SyncAllJob::dispatch();
+        SyncAllJob::dispatch(SyncRun::TRIGGER_MANUAL);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json(['ok' => true]);
