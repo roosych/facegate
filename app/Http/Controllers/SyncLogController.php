@@ -9,7 +9,7 @@ class SyncLogController extends Controller
 {
     public function index(): View
     {
-        $logs = SyncLog::with(['employee', 'device'])
+        $logs = SyncLog::with('employee')
             ->latest()
             ->paginate(50);
 
