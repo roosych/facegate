@@ -49,7 +49,7 @@ class EmployeeController extends Controller
         $employee->load(['accessPoints', 'syncLogs' => fn ($q) => $q->latest()->limit(20)]);
 
         $recentEvents = $employee->accessEvents()
-            ->with('device')
+            ->with(['hikvisionTerminal', 'accessPoint'])
             ->latest('event_time')
             ->limit(20)
             ->get();
