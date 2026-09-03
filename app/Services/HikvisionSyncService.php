@@ -137,10 +137,34 @@ class HikvisionSyncService
                 // (UserInfo/SetUp is an upsert, so this also fixes name drift).
                 $terminalPerson = $terminalPersons->get($empCodeStr);
                 $expectedName = mb_substr($employee->full_name, 0, 32);
+                $nameDrifted = $terminalPerson !== null && ($terminalPerson['name'] ?? null) !== $expectedName;
+                $forceFace = false;
 
-                if ($terminalPerson === null || ($terminalPerson['name'] ?? null) !== $expectedName) {
+                if ($terminalPerson === null || $nameDrifted) {
                     $service->addEmployee($employee);
-                    $this->log($employee->id, $terminal->id, 'hikvision_add', 'success', 'Added to '.$terminal->name);
+
+                    if ($nameDrifted) {
+                        // A slot that already held a *different* name is not a normal new-hire add:
+                        // either the firmware dropped an earlier write, or something else is writing
+                        // this device. Confirm the correction actually stuck rather than logging a
+                        // blind "success" — a silently-dropped write here is how a person ends up
+                        // authenticating as a colleague. Also force a face re-upload: a drifted
+                        // person record means the face at this FPID likely belongs to whoever
+                        // previously held the slot, and the "face already exists" skip below would
+                        // keep it forever.
+                        $forceFace = true;
+                        $after = $service->fetchUserInfo($empCodeStr);
+
+                        if (($after['name'] ?? null) !== $expectedName) {
+                            $this->log($employee->id, $terminal->id, 'hikvision_add', 'error',
+                                'Name still wrong after re-push — terminal has ['.($after['name'] ?? '?').'], expected ['.$expectedName.']');
+                        } else {
+                            $this->log($employee->id, $terminal->id, 'hikvision_add', 'success',
+                                'Name drift corrected ['.($terminalPerson['name'] ?? '?').' -> '.$expectedName.'] on '.$terminal->name);
+                        }
+                    } else {
+                        $this->log($employee->id, $terminal->id, 'hikvision_add', 'success', 'Added to '.$terminal->name);
+                    }
                 }
 
                 $syncedCodes[] = $empCodeStr;
@@ -187,7 +211,7 @@ class HikvisionSyncService
                 $isGuest = false;
                 $hasStoredPicture = ($terminalPerson['faceURL'] ?? '') !== '';
 
-                if (isset($terminalFaces[$empCodeStr]) && $hasStoredPicture) {
+                if (isset($terminalFaces[$empCodeStr]) && $hasStoredPicture && ! $forceFace) {
                     $hasFace = true; // face and picture unchanged — skip write
                 } elseif ($employee->photo_path === null) {
                     if ($this->isLikelyGuestName($employee->full_name)) {
@@ -204,7 +228,7 @@ class HikvisionSyncService
                     // itself changes — which is the only thing that could alter the outcome.
                     $photoSignature = $this->photoSignature($employee);
 
-                    if (($knownFaceProblems[$empCodeStr] ?? null) === $photoSignature) {
+                    if (! $forceFace && ($knownFaceProblems[$empCodeStr] ?? null) === $photoSignature) {
                         $faceProblems[$empCodeStr] = $photoSignature;
                     } else {
                         try {

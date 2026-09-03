@@ -48,6 +48,25 @@ class HikvisionService
     }
 
     /**
+     * Gate every state-changing call to a physical terminal on this deployment being the one
+     * that owns it (config('hikvision.sync_enabled')). Reads are never gated. Two environments
+     * writing one device race for the same emp_code and silently corrupt person/card/face
+     * records — see config/hikvision.php.
+     *
+     * @throws RuntimeException when writes are disabled for this environment
+     */
+    private function guardWrite(): void
+    {
+        if (! config('hikvision.sync_enabled')) {
+            throw new RuntimeException(
+                'Hikvision terminal writes are disabled in this environment '
+                .'(config hikvision.sync_enabled is false). A physical terminal may be driven by only one '
+                .'environment; set HIKVISION_SYNC_ENABLED=true only where this deployment owns the device.'
+            );
+        }
+    }
+
+    /**
      * Check whether the terminal is reachable.
      */
     public function isOnline(): bool
@@ -184,6 +203,8 @@ class HikvisionService
      */
     public function addEmployee(Employee $employee): void
     {
+        $this->guardWrite();
+
         $response = $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/UserInfo/SetUp?format=json', [
@@ -215,6 +236,8 @@ class HikvisionService
      */
     public function deleteEmployee(Employee $employee): void
     {
+        $this->guardWrite();
+
         $response = $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/UserInfo/Delete?format=json', [
@@ -237,6 +260,8 @@ class HikvisionService
      */
     public function deleteByEmpCode(string $empCode): void
     {
+        $this->guardWrite();
+
         $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/UserInfo/Delete?format=json', [
@@ -357,6 +382,8 @@ class HikvisionService
      */
     public function addCard(string $empCode, string $cardNo): void
     {
+        $this->guardWrite();
+
         $response = $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/CardInfo/SetUp?format=json', [
@@ -376,10 +403,15 @@ class HikvisionService
 
     /**
      * Delete all cards for an employee from the terminal.
+     *
+     * A swallowed failure here leaves a stale/shifted card on the person, so the correct
+     * card keeps colliding on Hikvision's global card-number uniqueness — check the response.
      */
     public function deleteCards(string $empCode): void
     {
-        $this->http()
+        $this->guardWrite();
+
+        $response = $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/CardInfo/Delete?format=json', [
                 'CardInfoDelCond' => [
@@ -388,6 +420,12 @@ class HikvisionService
                     ],
                 ],
             ]);
+
+        if (! $response->successful() && $response->status() !== 404) {
+            throw new RuntimeException(
+                'Failed to delete cards for '.$empCode.' on '.$this->terminal->name.': '.$response->body()
+            );
+        }
     }
 
     /**
@@ -396,6 +434,8 @@ class HikvisionService
      */
     public function uploadFace(Employee $employee): void
     {
+        $this->guardWrite();
+
         if ($employee->photo_path === null) {
             Log::warning('Hikvision uploadFace skipped: no photo_path in DB', [
                 'emp_code' => $employee->emp_code,
@@ -755,6 +795,8 @@ class HikvisionService
      */
     public function setAlcoholDetectionParams(array $params): bool
     {
+        $this->guardWrite();
+
         try {
             $response = $this->http()
                 ->withHeaders(['Content-Type' => 'application/json'])
@@ -778,6 +820,8 @@ class HikvisionService
      */
     public function configureEventListening(): bool
     {
+        $this->guardWrite();
+
         $baseUrl = config('hikvision.webhook_base_url');
         $token = config('hikvision.webhook_token');
 
@@ -934,6 +978,8 @@ class HikvisionService
      */
     public function setAlcoholWeekPlan(array $plan): bool
     {
+        $this->guardWrite();
+
         $weekPlanCfg = [];
 
         foreach (self::ALCOHOL_WEEK_DAYS as $day => $dayNumber) {
@@ -978,6 +1024,8 @@ class HikvisionService
      */
     public function setAlcoholSkip(string $empCode, bool $skip): bool
     {
+        $this->guardWrite();
+
         try {
             // METAK.docx documents POST .../UserInfo/Record for this, but that endpoint is
             // create-only on this firmware (rejects existing employeeNos with
@@ -1082,6 +1130,8 @@ class HikvisionService
      */
     public function refreshFace(Employee $employee): void
     {
+        $this->guardWrite();
+
         $this->deleteEmployee($employee);
         $this->addEmployee($employee);
 

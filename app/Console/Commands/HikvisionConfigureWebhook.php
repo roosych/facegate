@@ -14,6 +14,12 @@ class HikvisionConfigureWebhook extends Command
 {
     public function handle(): int
     {
+        if (! config('hikvision.sync_enabled')) {
+            $this->warn('Hikvision sync is disabled in this environment (config hikvision.sync_enabled). Refusing to repoint terminal push.');
+
+            return self::SUCCESS;
+        }
+
         if (! config('hikvision.webhook_base_url') || ! config('hikvision.webhook_token')) {
             $this->error('HIKVISION_WEBHOOK_BASE_URL and/or HIKVISION_WEBHOOK_TOKEN are not set in .env.');
 

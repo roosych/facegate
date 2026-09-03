@@ -15,6 +15,12 @@ class SyncAllHikvisionTerminals extends Command
 {
     public function handle(): int
     {
+        if (! config('hikvision.sync_enabled')) {
+            $this->warn('Hikvision sync is disabled in this environment (config hikvision.sync_enabled). Skipping.');
+
+            return self::SUCCESS;
+        }
+
         $terminals = HikvisionTerminal::where('is_active', true)->get();
 
         foreach ($terminals as $terminal) {

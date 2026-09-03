@@ -41,6 +41,12 @@ class SyncHikvisionTerminalJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(HikvisionSyncService $syncService): void
     {
+        // A physical terminal is driven by exactly one environment. Bail here too, not just in
+        // the scheduled command, so a manually dispatched job on a non-owning env can't push.
+        if (! config('hikvision.sync_enabled')) {
+            return;
+        }
+
         // Syncing hundreds of employees in one job — including decoding/resizing large
         // face photos via GD — comfortably exceeds the default 128M CLI memory_limit.
         ini_set('memory_limit', '512M');
