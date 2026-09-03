@@ -28,6 +28,12 @@ Schedule::command('hikvision:fetch-events', ['--minutes' => 35])->everyThirtyMin
 Schedule::command('hikvision:sync-all')->everyFifteenMinutes();
 Schedule::command('rusguard:poll-audit')->everyMinute()->withoutOverlapping();
 
+// Read-only drift check: does every terminal slot still hold the person/card/face the local DB
+// says it should? Catches a silently-scrambled device (dropped SetUp writes, a second env
+// fighting for the same emp_code) in hours instead of by a "I passed as someone else" report.
+// Exits non-zero on drift; wire an alert to ->emailOutputOnFailure() / a notifier as needed.
+Schedule::command('hikvision:audit-terminal')->hourly();
+
 // Correctness floor for RusGuard → local DB. poll-audit above reacts within a minute, but it
 // can only react to the message types it knows about, so anything not on that list would
 // otherwise never arrive; a new employee was measured sitting unsynced for three days. This
