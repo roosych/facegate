@@ -214,6 +214,48 @@ class SyncServiceTest extends TestCase
         $this->assertSame(1, $stillHere->accessPoints()->count());
     }
 
+    public function test_clears_local_photo_when_rusguard_photo_is_deleted(): void
+    {
+        $uuid = '55555555-5555-5555-5555-555555555555';
+        $photoPath = 'photos/'.$uuid.'.jpg';
+        $absolute = storage_path('app/'.$photoPath);
+
+        if (! is_dir(dirname($absolute))) {
+            mkdir(dirname($absolute), 0775, true);
+        }
+        file_put_contents($absolute, 'fake-jpeg-bytes');
+
+        $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-z']);
+        $employee = Employee::factory()->create([
+            'rusguard_uuid' => $uuid,
+            'photo_path' => $photoPath,
+            'is_active' => true,
+        ]);
+        $accessPoint->employees()->attach($employee->id);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([[
+            'driverId' => 'point-z',
+            'name' => 'Point Z',
+            'deviceType' => 'Дверь',
+            'employees' => [['uuid' => $uuid, 'fio' => $employee->last_name.' '.$employee->first_name]],
+        ]]);
+        // RusGuard no longer has a photo for this employee.
+        $rusGuardDb->shouldReceive('getEmployeePhoto')->once()->andReturn(null);
+        $rusGuardDb->shouldReceive('getEmployeeKeys')->once()->andReturn([]);
+        $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->andReturn([$uuid]);
+
+        try {
+            $syncService = new SyncService($rusGuardDb);
+            $syncService->syncAllFromRusGuard();
+
+            $this->assertNull($employee->fresh()->photo_path);
+            $this->assertFileDoesNotExist($absolute);
+        } finally {
+            @unlink($absolute);
+        }
+    }
+
     public function test_access_point_sync_writes_to_its_own_cache_key_not_the_global_one(): void
     {
         Cache::put(SyncService::SYNC_STATUS_KEY, ['status' => 'running', 'emp_total' => 11925]);

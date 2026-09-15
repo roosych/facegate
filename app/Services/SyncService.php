@@ -151,6 +151,18 @@ class SyncService
                     $employee->photo_path = 'photos/'.$uuid.'.jpg';
                     $photoDirty = true;
                 }
+            } elseif ($employee->photo_path !== null) {
+                // RusGuard no longer has a photo for this employee (deleted there) — clear the
+                // stale local copy so the Hikvision push detects the removal instead of treating
+                // the employee as still having a valid photo forever.
+                $oldPhotoPath = storage_path('app/'.$employee->photo_path);
+
+                if (file_exists($oldPhotoPath)) {
+                    unlink($oldPhotoPath);
+                }
+
+                $employee->photo_path = null;
+                $photoDirty = true;
             }
         } catch (Throwable) {
             // Non-fatal — continue without photo

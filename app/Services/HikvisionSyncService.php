@@ -211,9 +211,22 @@ class HikvisionSyncService
                 $isGuest = false;
                 $hasStoredPicture = ($terminalPerson['faceURL'] ?? '') !== '';
 
-                if (isset($terminalFaces[$empCodeStr]) && $hasStoredPicture && ! $forceFace) {
+                if (isset($terminalFaces[$empCodeStr]) && $hasStoredPicture && ! $forceFace && $employee->photo_path !== null) {
                     $hasFace = true; // face and picture unchanged — skip write
                 } elseif ($employee->photo_path === null) {
+                    if (isset($terminalFaces[$empCodeStr])) {
+                        // Local photo is gone (e.g. deleted in RusGuard) but the terminal still
+                        // has a face enrolled from before — remove it so the deletion actually
+                        // reaches the terminal instead of lingering forever.
+                        try {
+                            $service->deleteFace($empCodeStr);
+                            unset($terminalFaces[$empCodeStr]);
+                            $this->log($employee->id, $terminal->id, 'hikvision_face', 'success', 'Stale face removed (photo deleted in RusGuard)');
+                        } catch (Throwable $e) {
+                            $this->log($employee->id, $terminal->id, 'hikvision_face', 'error', 'Failed to remove stale face: '.$e->getMessage());
+                        }
+                    }
+
                     if ($this->isLikelyGuestName($employee->full_name)) {
                         // Placeholder/guest badge record (e.g. "Гость 44 ресепшн") — never
                         // has a real photo, so don't count it as a genuine sync failure.
