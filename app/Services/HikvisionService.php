@@ -429,6 +429,33 @@ class HikvisionService
     }
 
     /**
+     * Delete an employee's face record from the terminal's face library, leaving the person
+     * and any cards intact. Used when the local photo has been cleared (e.g. deleted in
+     * RusGuard) but a face from before is still enrolled on the terminal — otherwise a face
+     * already present there is treated as "in sync" and never revisited.
+     */
+    public function deleteFace(string $empCode): void
+    {
+        $this->guardWrite();
+
+        $response = $this->http()
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->put('/ISAPI/Intelligent/FDLib/FDSearch/Delete?format=json', [
+                'FaceInfoDelCond' => [
+                    'FDID' => '1',
+                    'faceLibType' => 'blackFD',
+                    'FPID' => [$empCode],
+                ],
+            ]);
+
+        if (! $response->successful() && $response->status() !== 404) {
+            throw new RuntimeException(
+                'Failed to delete face for '.$empCode.' on '.$this->terminal->name.': '.$response->body()
+            );
+        }
+    }
+
+    /**
      * Upload a face photo for an employee via multipart/form-data (FaceDataRecord endpoint).
      * If a face already exists on the terminal, it is replaced in place via FDModify.
      */
