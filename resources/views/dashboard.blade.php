@@ -63,7 +63,9 @@
             },
             async poll() {
                 try {
-                    const res = await fetch('{{ route('dashboard.status') }}');
+                    const res = await fetch('{{ route('dashboard.status') }}', {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    });
                     this.data = await res.json();
                 } catch (e) {
                     // network blip — retry
