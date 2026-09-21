@@ -196,6 +196,9 @@ class HikvisionSyncService
                         $terminalCards[$empCodeStr] = $expectedCardNos;
                         $hasCard = true;
                     } catch (Throwable $e) {
+                        // Counted so the run's error total agrees with the hikvision_card error
+                        // rows; without it a pass that dropped hundreds of cards reported 0 errors.
+                        $results['errors']++;
                         $this->log($employee->id, $terminal->id, 'hikvision_card', 'error', $e->getMessage());
                     }
                 }
