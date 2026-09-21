@@ -88,13 +88,10 @@ class HikvisionEventWebhookController extends Controller
                 $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
 
                 if (is_array($decoded)) {
-                    foreach (self::EVENT_KEYS as $nestedKey) {
-                        if (isset($decoded[$nestedKey]) && is_array($decoded[$nestedKey])) {
-                            return $decoded[$nestedKey];
-                        }
-                    }
-
-                    return $decoded;
+                    // A JSON-encoded string field is the whole envelope. A key already parsed
+                    // into an array (JSON request body) is the event itself, and the envelope
+                    // that carries its dateTime is the request as a whole.
+                    return $this->unwrapEvent(is_string($raw) ? $decoded : $request->all());
                 }
             }
         }
@@ -112,13 +109,38 @@ class HikvisionEventWebhookController extends Controller
             return null;
         }
 
+        $event = $this->unwrapEvent($body);
+
+        return $event !== [] ? $event : null;
+    }
+
+    /**
+     * Returns the per-event object nested in a push envelope, or the envelope itself when
+     * nothing is nested (a bare heartbeat).
+     *
+     * The envelope's own dateTime is the terminal's clock at the moment of the event, and the
+     * nested object carries no timestamp of its own. It is copied onto the event so the ingest
+     * step records the terminal's time — dropping it here left the server's receipt time as the
+     * only timestamp, which drifts from the device whenever the two clocks disagree.
+     *
+     * @param  array<string, mixed>  $envelope
+     * @return array<string, mixed>
+     */
+    private function unwrapEvent(array $envelope): array
+    {
         foreach (self::EVENT_KEYS as $key) {
-            if (isset($body[$key]) && is_array($body[$key])) {
-                return $body[$key];
+            if (isset($envelope[$key]) && is_array($envelope[$key])) {
+                $event = $envelope[$key];
+
+                if (! isset($event['time']) && ! isset($event['dateTime']) && isset($envelope['dateTime'])) {
+                    $event['dateTime'] = $envelope['dateTime'];
+                }
+
+                return $event;
             }
         }
 
-        return $body !== [] ? $body : null;
+        return $envelope;
     }
 
     /**
@@ -142,12 +164,8 @@ class HikvisionEventWebhookController extends Controller
             return null;
         }
 
-        foreach (self::EVENT_KEYS as $key) {
-            if (isset($decoded[$key]) && is_array($decoded[$key])) {
-                return $decoded[$key];
-            }
-        }
+        $event = $this->unwrapEvent($decoded);
 
-        return $decoded !== [] ? $decoded : null;
+        return $event !== [] ? $event : null;
     }
 }

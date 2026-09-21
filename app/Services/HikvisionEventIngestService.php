@@ -8,7 +8,9 @@ use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\Setting;
 use App\Services\RusGuard\RusGuardDatabaseService;
+use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
@@ -38,16 +40,14 @@ class HikvisionEventIngestService
 
         $empCode = isset($eventData['employeeNoString']) ? (int) $eventData['employeeNoString'] : null;
         $employee = $empCode !== null ? Employee::where('emp_code', $empCode)->first() : null;
-        $eventTime = isset($eventData['time']) ? Carbon::parse($eventData['time']) : now();
+        $eventTime = $this->terminalEventTime($terminal, $eventData);
 
         // serialNo is the terminal's own monotonically increasing per-event counter — present
         // on both the real-time push and the polled AcsEvent shape — so it's an exact identity
-        // check when available. Real-time push payloads don't carry a "time" field on the
-        // per-event object (only the outer envelope's heartbeat-style "dateTime" does), so
-        // $eventTime above is just now() for push-delivered events; back-to-back genuine tests
-        // only seconds apart were colliding in the old ±30s time-window dedup below and getting
-        // silently dropped as "duplicates" even though they were distinct passes. Fall back to
-        // the time-window heuristic only when serialNo isn't present in the payload.
+        // check when available. Back-to-back genuine tests only seconds apart were colliding
+        // in the old ±30s time-window dedup below and getting silently dropped as "duplicates"
+        // even though they were distinct passes. Fall back to the time-window heuristic only
+        // when serialNo isn't present in the payload.
         $serialNo = $eventData['serialNo'] ?? null;
 
         $alreadyExists = AccessEvent::where('hikvision_terminal_id', $terminal->id)
@@ -88,6 +88,41 @@ class HikvisionEventIngestService
         }
 
         return $event;
+    }
+
+    /**
+     * When the event happened, by the terminal's own clock — the terminal is the source of
+     * truth for event_time, whichever path delivered the event. The polled AcsEvent shape
+     * carries it as "time"; the push shape carries the envelope's "dateTime" (copied onto the
+     * event by the webhook controller). Both are ISO 8601 with the device's offset, so the
+     * instant is converted to the application timezone before it is stored in the
+     * timezone-less column; otherwise it would be saved as the device's wall-clock digits.
+     *
+     * Only a payload with no usable timestamp falls back to the server clock, and that is
+     * logged: created_at is the server-side receipt time, so an event whose event_time is the
+     * receipt time as well can no longer be compared against it.
+     *
+     * @param  array<string, mixed>  $eventData
+     */
+    private function terminalEventTime(HikvisionTerminal $terminal, array $eventData): Carbon
+    {
+        $stamp = $eventData['time'] ?? $eventData['dateTime'] ?? null;
+
+        if (is_string($stamp) && $stamp !== '') {
+            try {
+                return Carbon::parse($stamp)->setTimezone(config('app.timezone'));
+            } catch (InvalidFormatException) {
+                // fall through to the server clock below
+            }
+        }
+
+        Log::warning('Hikvision event has no usable terminal timestamp — using server time', [
+            'terminal_id' => $terminal->id,
+            'serialNo' => $eventData['serialNo'] ?? null,
+            'timestamp' => $stamp,
+        ]);
+
+        return now();
     }
 
     /**
