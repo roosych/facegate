@@ -79,8 +79,7 @@ class HikvisionEventIngestService
         ]);
 
         if ($employee !== null && $event->alcoholPassed() === true && isset($alcoholRequiredUuids[$employee->rusguard_uuid])) {
-            $employee->update(['alcohol_skip_until' => now()->addMinutes(Setting::alcoholSkipGraceMinutes())]);
-            $this->pushAlcoholSkipToLinkedTerminals($employee);
+            $this->grantGracePeriod($employee, $eventTime);
         }
 
         if ($event->alcoholPassed() === false) {
@@ -147,6 +146,27 @@ class HikvisionEventIngestService
      * employee has RusGuard access to — not just the one they just passed at — so they
      * aren't re-tested at another post on the same site within the re-test window.
      */
+    /**
+     * Exempts a required employee from testing for the grace period after a passed test.
+     *
+     * The window is counted from when the test happened (the terminal's clock), not from when
+     * this server processed it. An event delivered late by the 30-minute poll would otherwise
+     * start its window up to 35 minutes late, and one already older than the grace period would
+     * still hand out a fresh exemption. A window that has already lapsed is not granted at all,
+     * and a longer one already in place (a later pass processed first) is never shortened.
+     */
+    private function grantGracePeriod(Employee $employee, Carbon $passedAt): void
+    {
+        $skipUntil = $passedAt->copy()->addMinutes(Setting::alcoholSkipGraceMinutes());
+
+        if ($skipUntil->isPast() || $employee->alcohol_skip_until?->gte($skipUntil)) {
+            return;
+        }
+
+        $employee->update(['alcohol_skip_until' => $skipUntil]);
+        $this->pushAlcoholSkipToLinkedTerminals($employee);
+    }
+
     private function pushAlcoholSkipToLinkedTerminals(Employee $employee): void
     {
         foreach ($employee->alcoholEnabledTerminals() as $terminal) {

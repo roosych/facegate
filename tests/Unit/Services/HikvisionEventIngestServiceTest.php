@@ -10,6 +10,7 @@ use App\Models\HikvisionTerminal;
 use App\Models\Setting;
 use App\Services\HikvisionEventIngestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -148,6 +149,113 @@ class HikvisionEventIngestServiceTest extends TestCase
 
         $this->assertNotNull($employee->fresh()->alcohol_skip_until);
         Http::assertSent(fn ($request) => $request['UserInfo']['PersonInfoExtends'] === [['value' => 'skip_alcohol']]);
+    }
+
+    /**
+     * @return array{0: HikvisionTerminal, 1: Employee}
+     */
+    private function requiredEmployeeOnAlcoholTerminal(): array
+    {
+        $accessPoint = AccessPoint::factory()->create();
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['access_point_id' => $accessPoint->id, 'ip' => '127.0.0.1']);
+        $employee = Employee::factory()->create(['emp_code' => 42]);
+        $employee->accessPoints()->attach($accessPoint->id);
+
+        return [$terminal, $employee];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function passedTestAt(Carbon $time, int $serialNo): array
+    {
+        return [
+            'employeeNoString' => '42',
+            'serialNo' => $serialNo,
+            'time' => $time->toIso8601String(),
+            'alcoholDetectionInfo' => ['result' => 'normal', 'concentrationInfo' => ['concentrationValue' => 0]],
+        ];
+    }
+
+    public function test_grace_period_is_counted_from_the_time_of_the_pass_not_from_processing(): void
+    {
+        Http::fake(['*/ISAPI/AccessControl/UserInfo/SetUp*' => Http::response(['statusCode' => 1], 200)]);
+        Carbon::setTestNow('2026-09-21 08:00:00');
+        Setting::set('alcohol_skip_grace_minutes', '180');
+        [$terminal, $employee] = $this->requiredEmployeeOnAlcoholTerminal();
+
+        // Passed at 07:30 but only picked up by the poll at 08:00.
+        (new HikvisionEventIngestService)->ingest(
+            $terminal,
+            $this->passedTestAt(Carbon::parse('2026-09-21 07:30:00'), 1),
+            [$employee->rusguard_uuid => true]
+        );
+
+        $this->assertSame('2026-09-21 10:30:00', $employee->fresh()->alcohol_skip_until->format('Y-m-d H:i:s'));
+        Http::assertSent(fn ($request) => $request['UserInfo']['PersonInfoExtends'] === [['value' => 'skip_alcohol']]);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_a_pass_older_than_the_grace_period_grants_no_exemption(): void
+    {
+        Http::fake();
+        Carbon::setTestNow('2026-09-21 12:00:00');
+        Setting::set('alcohol_skip_grace_minutes', '180');
+        [$terminal, $employee] = $this->requiredEmployeeOnAlcoholTerminal();
+
+        // Passed 4 h ago: its 180-minute window ended an hour ago.
+        (new HikvisionEventIngestService)->ingest(
+            $terminal,
+            $this->passedTestAt(Carbon::parse('2026-09-21 08:00:00'), 1),
+            [$employee->rusguard_uuid => true]
+        );
+
+        $this->assertNull($employee->fresh()->alcohol_skip_until);
+        $this->assertSame(1, AccessEvent::count());
+        Http::assertNothingSent();
+
+        Carbon::setTestNow();
+    }
+
+    public function test_an_older_pass_processed_late_does_not_shorten_a_longer_window(): void
+    {
+        Http::fake();
+        Carbon::setTestNow('2026-09-21 09:00:00');
+        Setting::set('alcohol_skip_grace_minutes', '180');
+        [$terminal, $employee] = $this->requiredEmployeeOnAlcoholTerminal();
+        $employee->update(['alcohol_skip_until' => Carbon::parse('2026-09-21 12:00:00')]);
+
+        // A pass from 08:00 (window to 11:00) arrives after a later pass already set 12:00.
+        (new HikvisionEventIngestService)->ingest(
+            $terminal,
+            $this->passedTestAt(Carbon::parse('2026-09-21 08:00:00'), 1),
+            [$employee->rusguard_uuid => true]
+        );
+
+        $this->assertSame('2026-09-21 12:00:00', $employee->fresh()->alcohol_skip_until->format('Y-m-d H:i:s'));
+        Http::assertNothingSent();
+
+        Carbon::setTestNow();
+    }
+
+    public function test_a_later_pass_extends_the_window(): void
+    {
+        Http::fake(['*/ISAPI/AccessControl/UserInfo/SetUp*' => Http::response(['statusCode' => 1], 200)]);
+        Carbon::setTestNow('2026-09-21 09:00:00');
+        Setting::set('alcohol_skip_grace_minutes', '180');
+        [$terminal, $employee] = $this->requiredEmployeeOnAlcoholTerminal();
+        $employee->update(['alcohol_skip_until' => Carbon::parse('2026-09-21 10:30:00')]);
+
+        (new HikvisionEventIngestService)->ingest(
+            $terminal,
+            $this->passedTestAt(Carbon::parse('2026-09-21 09:00:00'), 1),
+            [$employee->rusguard_uuid => true]
+        );
+
+        $this->assertSame('2026-09-21 12:00:00', $employee->fresh()->alcohol_skip_until->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow();
     }
 
     public function test_does_not_set_grace_period_when_employee_is_not_in_required_set(): void
