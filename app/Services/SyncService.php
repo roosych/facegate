@@ -101,7 +101,7 @@ class SyncService
      * Pull one employee from RusGuard and save to local DB only.
      * Skips writes when name, photo and keys are all unchanged.
      *
-     * @param  array{uuid: string, fio: string}  $rgEmployee
+     * @param  array{uuid: string, fio: string, position?: ?string, department?: ?string}  $rgEmployee
      */
     public function createOrUpdateEmployee(array $rgEmployee): Employee
     {
@@ -125,6 +125,16 @@ class SyncService
             $employee->first_name = $firstName;
             $employee->last_name = $lastName ?: null;
             $employee->middle_name = $middleName ?: null;
+        }
+
+        $position = $rgEmployee['position'] ?? null;
+        $department = $rgEmployee['department'] ?? null;
+
+        $positionDirty = $employee->position !== $position || $employee->department !== $department;
+
+        if ($positionDirty) {
+            $employee->position = $position;
+            $employee->department = $department;
         }
 
         // Download photo — write to disk only if content changed (MD5 comparison)
@@ -168,7 +178,7 @@ class SyncService
             // Non-fatal — continue without photo
         }
 
-        if ($isNew || $nameDirty || $photoDirty) {
+        if ($isNew || $nameDirty || $positionDirty || $photoDirty) {
             $employee->last_synced_at = now();
             $employee->save();
         }
