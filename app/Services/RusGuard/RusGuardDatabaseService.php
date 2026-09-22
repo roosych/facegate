@@ -50,6 +50,37 @@ class RusGuardDatabaseService
         )
     ';
 
+    /**
+     * The employee's direct EmployeeGroupID is often an access-control subgroup nested several
+     * levels below the actual department — e.g. .../SƏTƏM və Nəzarət Departamenti/Nəzarət
+     * şöbəsi/Женщины/<employee>, where "Женщины" only exists to split by gender and has no
+     * organisational meaning. Verified against production RusGuard 2026-09-22: the department
+     * is the node one level below the tree's root (deptG1..deptG6 walk ParentID up to 6 levels,
+     * comfortably past the deepest branch seen, which is 4), or the root itself when the
+     * employee sits directly under it with no further nesting (e.g. "Plastik məhsulların anbarı
+     * (Azplast)", which has no subgroups at all).
+     */
+    private const DEPARTMENT_ANCESTOR_JOINS = '
+        LEFT JOIN EmployeeGroup deptG1 ON deptG1._id = e.EmployeeGroupID
+        LEFT JOIN EmployeeGroup deptG2 ON deptG2._id = deptG1.ParentID
+        LEFT JOIN EmployeeGroup deptG3 ON deptG3._id = deptG2.ParentID
+        LEFT JOIN EmployeeGroup deptG4 ON deptG4._id = deptG3.ParentID
+        LEFT JOIN EmployeeGroup deptG5 ON deptG5._id = deptG4.ParentID
+        LEFT JOIN EmployeeGroup deptG6 ON deptG6._id = deptG5.ParentID
+    ';
+
+    private const DEPARTMENT_CASE = '
+        CASE
+            WHEN deptG1.ParentID IS NULL THEN deptG1.Name
+            WHEN deptG2.ParentID IS NULL THEN deptG1.Name
+            WHEN deptG3.ParentID IS NULL THEN deptG2.Name
+            WHEN deptG4.ParentID IS NULL THEN deptG3.Name
+            WHEN deptG5.ParentID IS NULL THEN deptG4.Name
+            WHEN deptG6.ParentID IS NULL THEN deptG5.Name
+            ELSE deptG1.Name
+        END
+    ';
+
     private ?PDO $pdo = null;
 
     private function pdo(): PDO
@@ -103,10 +134,10 @@ class RusGuardDatabaseService
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
                 CONVERT(varchar(36), e.EmployeeGroupID) AS groupId,
                 pos.Name                                AS position,
-                grp.Name                                AS department
+                ".self::DEPARTMENT_CASE." AS department
             FROM Employee e
             LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
-            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
+            ".self::DEPARTMENT_ANCESTOR_JOINS."
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
@@ -214,12 +245,12 @@ class RusGuardDatabaseService
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
                 CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId,
                 pos.Name                                       AS position,
-                grp.Name                                       AS department
+                ".self::DEPARTMENT_CASE." AS department
             FROM Employee e
             INNER JOIN EmployeeAcsAccessLevel eal ON eal.EmployeeID = e._id
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = eal.AcsAccessLevelID
             LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
-            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
+            ".self::DEPARTMENT_ANCESTOR_JOINS."
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
@@ -254,14 +285,14 @@ class RusGuardDatabaseService
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
                 CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId,
                 pos.Name                                       AS position,
-                grp.Name                                       AS department
+                ".self::DEPARTMENT_CASE." AS department
             FROM Employee e
             INNER JOIN EffectiveLevelGroup elg
                 ON elg.GroupID = e.EmployeeGroupID AND elg.IsAccessLevelsInherited = 0
             INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = elg.SourceGroupID
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = gal.AcsAccessLevelID
             LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
-            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
+            ".self::DEPARTMENT_ANCESTOR_JOINS."
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
