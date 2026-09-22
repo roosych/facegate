@@ -16,6 +16,9 @@
                 @endif
                 <div>
                     <h2 class="font-semibold text-gray-800">{{ $employee->full_name }}</h2>
+                    @if($employee->position || $employee->department)
+                        <p class="text-sm text-gray-500">{{ $employee->position ?? '—' }}@if($employee->department) · {{ $employee->department }} @endif</p>
+                    @endif
                     <p class="text-sm text-gray-400 font-mono">{{ $employee->emp_code }}</p>
                 </div>
             </div>
