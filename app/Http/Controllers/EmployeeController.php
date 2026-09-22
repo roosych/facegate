@@ -12,8 +12,10 @@ class EmployeeController extends Controller
     public function index(Request $request): View
     {
         $search = trim((string) $request->input('search', ''));
+        $showInactive = $request->boolean('show_inactive');
 
         $employees = Employee::with(['accessPoints', 'keys'])
+            ->when(! $showInactive, fn ($query) => $query->where('is_active', true))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $like = '%'.$search.'%';
@@ -21,6 +23,8 @@ class EmployeeController extends Controller
                         ->orWhere('first_name', 'ilike', $like)
                         ->orWhere('middle_name', 'ilike', $like)
                         ->orWhere('emp_code', 'ilike', $like)
+                        ->orWhere('position', 'ilike', $like)
+                        ->orWhere('department', 'ilike', $like)
                         ->orWhereHas('keys', fn ($k) => $k->where('value', 'ilike', $like));
                 });
             })
@@ -28,7 +32,11 @@ class EmployeeController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        return view('employees.index', compact('employees', 'search'));
+        // Inactive employees are kept (not deleted — access_events and employee_keys still
+        // reference them) but shouldn't clutter the default list. Shown only via the toggle.
+        $inactiveCount = Employee::where('is_active', false)->count();
+
+        return view('employees.index', compact('employees', 'search', 'showInactive', 'inactiveCount'));
     }
 
     public function photo(Employee $employee): BinaryFileResponse
