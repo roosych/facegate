@@ -87,6 +87,63 @@ class SyncServiceTest extends TestCase
         $this->assertSame(1, AccessPoint::where('rusguard_access_point_id', 'point-b')->first()->employees()->count());
     }
 
+    public function test_stores_position_and_department_from_rusguard(): void
+    {
+        $uuid = '66666666-6666-6666-6666-666666666666';
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getAccessPointsWithEmployees')->once()->andReturn([[
+            'driverId' => 'point-position',
+            'name' => 'Point Position',
+            'deviceType' => 'Дверь',
+            'employees' => [[
+                'uuid' => $uuid,
+                'fio' => 'Фамилия Имя',
+                'position' => 'Инженер',
+                'department' => 'IT отдел',
+            ]],
+        ]]);
+        $rusGuardDb->shouldReceive('getEmployeePhoto')->once()->andReturn(null);
+        $rusGuardDb->shouldReceive('getEmployeeKeys')->once()->andReturn([]);
+        $rusGuardDb->shouldReceive('getActiveEmployeeUuids')->andReturn([$uuid]);
+
+        $syncService = new SyncService($rusGuardDb);
+        $syncService->syncAllFromRusGuard();
+
+        $employee = Employee::where('rusguard_uuid', $uuid)->first();
+
+        $this->assertSame('Инженер', $employee->position);
+        $this->assertSame('IT отдел', $employee->department);
+    }
+
+    public function test_updates_position_and_department_when_they_change_in_rusguard(): void
+    {
+        $employee = Employee::factory()->create([
+            'rusguard_uuid' => '77777777-7777-7777-7777-777777777777',
+            'position' => 'Стажёр',
+            'department' => 'Старый отдел',
+        ]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getAccessPointDeviceType')->andReturn(null);
+        $rusGuardDb->shouldReceive('getEmployeesForAccessPoint')->once()->andReturn([[
+            'uuid' => $employee->rusguard_uuid,
+            'fio' => $employee->last_name.' '.$employee->first_name,
+            'position' => 'Инженер',
+            'department' => 'Новый отдел',
+        ]]);
+        $rusGuardDb->shouldReceive('getEmployeePhoto')->andReturn(null);
+        $rusGuardDb->shouldReceive('getEmployeeKeys')->andReturn([]);
+
+        $accessPoint = AccessPoint::factory()->create();
+        $syncService = new SyncService($rusGuardDb);
+        $syncService->syncEmployeesForAccessPoint($accessPoint->id);
+
+        $employee->refresh();
+        $this->assertSame('Инженер', $employee->position);
+        $this->assertSame('Новый отдел', $employee->department);
+    }
+
     public function test_deactivates_local_employee_no_longer_active_in_rusguard(): void
     {
         $accessPoint = AccessPoint::factory()->create(['rusguard_access_point_id' => 'point-x']);

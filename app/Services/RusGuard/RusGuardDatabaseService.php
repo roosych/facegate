@@ -84,7 +84,7 @@ class RusGuardDatabaseService
      *   - Direct employee → access level → access point assignments
      *   - Group → access level → access point assignments (inherited)
      *
-     * @return array<int, array{uuid: string, fio: string, groupId: string}>
+     * @return array<int, array{uuid: string, fio: string, groupId: string, position: ?string, department: ?string}>
      */
     public function getEmployeesForAccessPoint(string $driverId): array
     {
@@ -101,8 +101,12 @@ class RusGuardDatabaseService
                 ISNULL(e.LastName, '')
                     + CASE WHEN e.FirstName  <> '' THEN ' ' + e.FirstName  ELSE '' END
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
-                CONVERT(varchar(36), e.EmployeeGroupID) AS groupId
+                CONVERT(varchar(36), e.EmployeeGroupID) AS groupId,
+                pos.Name                                AS position,
+                grp.Name                                AS department
             FROM Employee e
+            LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
+            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
@@ -143,7 +147,7 @@ class RusGuardDatabaseService
     /**
      * Get all access points with their deduplicated employees in a single pass.
      *
-     * @return array<int, array{driverId: string, name: string, employees: array<int, array{uuid: string, fio: string, groupId: string}>}>
+     * @return array<int, array{driverId: string, name: string, employees: array<int, array{uuid: string, fio: string, groupId: string, position: ?string, department: ?string}>}>
      */
     public function getAccessPointsWithEmployees(): array
     {
@@ -208,10 +212,14 @@ class RusGuardDatabaseService
                 ISNULL(e.LastName, '')
                     + CASE WHEN e.FirstName  <> '' THEN ' ' + e.FirstName  ELSE '' END
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
-                CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId
+                CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId,
+                pos.Name                                       AS position,
+                grp.Name                                       AS department
             FROM Employee e
             INNER JOIN EmployeeAcsAccessLevel eal ON eal.EmployeeID = e._id
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = eal.AcsAccessLevelID
+            LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
+            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
@@ -230,6 +238,8 @@ class RusGuardDatabaseService
                     'uuid' => $row['uuid'],
                     'fio' => trim($row['fio']),
                     'groupId' => $row['groupId'],
+                    'position' => $row['position'],
+                    'department' => $row['department'],
                 ];
             }
         }
@@ -242,12 +252,16 @@ class RusGuardDatabaseService
                 ISNULL(e.LastName, '')
                     + CASE WHEN e.FirstName  <> '' THEN ' ' + e.FirstName  ELSE '' END
                     + CASE WHEN e.SecondName <> '' THEN ' ' + e.SecondName ELSE '' END AS fio,
-                CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId
+                CONVERT(varchar(36), e.EmployeeGroupID)       AS groupId,
+                pos.Name                                       AS position,
+                grp.Name                                       AS department
             FROM Employee e
             INNER JOIN EffectiveLevelGroup elg
                 ON elg.GroupID = e.EmployeeGroupID AND elg.IsAccessLevelsInherited = 0
             INNER JOIN EmployeeGroupAcsAccessLevel gal ON gal.EmployeeGroupID = elg.SourceGroupID
             INNER JOIN AcsAccessPoint ap ON ap.AcsAccessLevelID = gal.AcsAccessLevelID
+            LEFT JOIN EmployeePosition pos ON pos._id = e.EmployeePositionID
+            LEFT JOIN EmployeeGroup grp ON grp._id = e.EmployeeGroupID
             WHERE e.IsRemoved = 0
               AND e.IsLocked = 0
               {$excludeClause}
@@ -267,6 +281,8 @@ class RusGuardDatabaseService
                     'uuid' => $row['uuid'],
                     'fio' => trim($row['fio']),
                     'groupId' => $row['groupId'],
+                    'position' => $row['position'],
+                    'department' => $row['department'],
                 ];
             }
         }
