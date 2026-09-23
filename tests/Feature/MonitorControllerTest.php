@@ -110,6 +110,32 @@ class MonitorControllerTest extends TestCase
         $response->assertJsonPath('access_points.0.event.department', 'İT şöbəsi');
     }
 
+    public function test_status_screen_omits_photo_url_when_the_employee_has_no_photo(): void
+    {
+        $accessPoint = AccessPoint::factory()->create();
+        $screen = MonitorScreen::factory()->create();
+        $screen->setAccessPoints([$accessPoint->id]);
+
+        $terminal = HikvisionTerminal::factory()->create(['access_point_id' => $accessPoint->id]);
+        $employee = Employee::factory()->create(['photo_path' => null]);
+
+        Cache::put($terminal->monitorCacheKey(), [
+            'employee_id' => $employee->id,
+            'employee_name' => $employee->full_name,
+            'emp_code' => $employee->emp_code,
+            'event_time' => now()->toIso8601String(),
+            'has_photo' => false,
+            'alcohol_tested' => false,
+            'alcohol_passed' => null,
+            'alcohol_concentration' => null,
+        ], now()->addDay());
+
+        $response = $this->get(URL::signedRoute('monitor.status-screen', ['monitorScreen' => $screen]));
+
+        $response->assertOk();
+        $response->assertJsonPath('access_points.0.event.photo_url', null);
+    }
+
     public function test_status_screen_reports_no_event_when_nothing_is_cached_yet(): void
     {
         $accessPoint = AccessPoint::factory()->create();
