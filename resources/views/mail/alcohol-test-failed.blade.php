@@ -1,18 +1,18 @@
 <x-mail::message>
-# Alcohol test failed
+# Провален тест на алкоголь
 
-**Employee:** {{ $employeeName }}
+**Сотрудник:** {{ $employeeName }}
 
-**Terminal:** {{ $terminalName }}
+**Терминал:** {{ $terminalName }}
 
-**Time:** {{ $eventTime->format('d.m.Y H:i:s') }}
+**Время:** {{ $eventTime->format('d.m.Y H:i:s') }}
 
-**Result:** {{ $result }}
+**Результат:** {{ $result }}
 
 @if($concentration !== null)
-**Concentration:** {{ $concentration }} mg/100ml ({{ $promille }} ‰)
+**Концентрация:** {{ $concentration }} мг/100мл ({{ $promille }} ‰)
 @endif
 
-Thanks,<br>
+С уважением,<br>
 {{ config('app.name') }}
 </x-mail::message>

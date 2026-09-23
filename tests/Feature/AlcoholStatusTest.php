@@ -53,6 +53,6 @@ class AlcoholStatusTest extends TestCase
         $response = $this->actingAs(User::factory()->create())->get(route('alcohol.index'));
 
         $response->assertOk();
-        $response->assertSee('No employees currently require alcohol testing.');
+        $response->assertSee('Сейчас нет сотрудников, которым требуется проверка на алкоголь.');
     }
 }

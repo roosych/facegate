@@ -162,7 +162,7 @@ class MonitoringHealthTest extends TestCase
             ->get(route('monitoring.index'))
             ->assertOk()
             ->assertSee('Живая точка')
-            ->assertSee('Access point is deactivated');
+            ->assertSee('Точка доступа деактивирована');
     }
 
     public function test_rebinding_moves_the_terminal_to_the_chosen_point(): void
@@ -302,8 +302,8 @@ class MonitoringHealthTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('monitoring.index'))
             ->assertOk()
-            ->assertSee('No photo in RusGuard · 1')
-            ->assertSee('Refused by the terminal · 1')
+            ->assertSee('Нет фото в RusGuard · 1')
+            ->assertSee('Отклонено терминалом · 1')
             ->assertSee('Иванов Иван')
             ->assertSee('Петров Пётр');
     }

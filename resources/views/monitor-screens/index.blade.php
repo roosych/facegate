@@ -1,9 +1,9 @@
 <x-app-layout>
-    @section('subtitle', 'Named groups of turnstiles for a physical monitor')
-    @section('title', 'Monitor Screens')
+    @section('subtitle', 'Именованные группы турникетов для физического монитора')
+    @section('title', 'Экраны мониторинга')
 
     <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-gray-500">Каждый экран — постоянная ссылка на один или несколько турникетов для киоска.</p>
+        <p class="text-sm text-gray-500">Каждый экран — постоянная ссылка на один или несколько турникетов для монитора на посту (ресепшн и т.д.).</p>
         <a href="{{ route('monitor-screens.create') }}" class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
             + Новый экран
         </a>

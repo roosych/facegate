@@ -1,15 +1,15 @@
 <x-app-layout>
-    @section('subtitle', 'Manage Hikvision terminals')
-    @section('title', 'Terminals')
+    @section('subtitle', 'Управление терминалами Hikvision')
+    @section('title', 'Терминалы')
 
     <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-5 py-4 mb-5">
-        <p class="text-sm text-gray-500">{{ $terminals->total() }} terminal(s)</p>
+        <p class="text-sm text-gray-500">{{ $terminals->total() }} терминал(ов)</p>
         <div class="flex items-center gap-2">
             <a href="{{ route('hikvision.sync.index') }}" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-colors">
-                Sync
+                Синхронизация
             </a>
             <a href="{{ route('hikvision.create') }}" style="background-color:#4f46e5;color:#fff;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:600;border-radius:0.5rem;text-decoration:none;display:inline-block">
-                Add Terminal
+                Добавить терминал
             </a>
         </div>
     </div>
@@ -115,7 +115,7 @@
                             @endif
                         </div>
 
-                        <span class="hidden sm:inline text-xs text-gray-400 font-mono flex-shrink-0" title="Terminal ID — used in the event webhook URL (/api/hikvision/{id}/events/...)">
+                        <span class="hidden sm:inline text-xs text-gray-400 font-mono flex-shrink-0" title="ID терминала — используется в URL вебхука событий (/api/hikvision/{id}/events/...)">
                             #{{ $terminal->id }}
                         </span>
 
@@ -135,7 +135,7 @@
                             x-cloak
                             :class="online ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'"
                             class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded-full border"
-                            x-text="online ? 'Online · ' + personCount + ' persons' : 'Offline'"
+                            x-text="online ? 'Онлайн · ' + personCount + ' чел.' : 'Офлайн'"
                         ></span>
 
                     </div>
@@ -154,7 +154,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
-                            Employees
+                            Сотрудники
                         </button>
 
                         {{-- Check connection --}}
@@ -178,7 +178,7 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                             </svg>
-                            Check
+                            Проверить
                         </button>
 
 
@@ -190,7 +190,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
                             </svg>
-                            Alcohol
+                            Алкотест
                         </a>
 
                         {{-- Edit --}}
@@ -201,11 +201,11 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
-                            Edit
+                            Изменить
                         </a>
 
                         {{-- Delete --}}
-                        <form method="POST" action="{{ route('hikvision.destroy', $terminal) }}" onsubmit="return confirm('Delete this terminal?')">
+                        <form method="POST" action="{{ route('hikvision.destroy', $terminal) }}" onsubmit="return confirm('Удалить этот терминал?')">
                             @csrf
                             @method('DELETE')
                             <button
@@ -215,7 +215,7 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                                 </svg>
-                                Delete
+                                Удалить
                             </button>
                         </form>
                     </div>
@@ -225,7 +225,7 @@
                 @if($terminal->sync_stats)
                     @php $s = $terminal->sync_stats; @endphp
                     <div class="px-5 pt-2 mb-2 flex items-center gap-6 border-t border-gray-50">
-                        <span class="text-xs text-gray-400 font-medium uppercase tracking-wide flex-shrink-0">Last sync</span>
+                        <span class="text-xs text-gray-400 font-medium uppercase tracking-wide flex-shrink-0">Последняя синхронизация</span>
                         <div class="flex items-center gap-4 flex-wrap">
 
                             {{-- Person --}}
@@ -233,13 +233,13 @@
                                 <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                 </svg>
-                                <span class="text-gray-500">Person</span>
+                                <span class="text-gray-500">Люди</span>
                                 <span class="font-semibold text-green-600">{{ $s['persons_added'] }}</span>
                                 <span class="text-gray-300">/</span>
                                 @if($s['persons_not_added'] > 0)
                                     <button type="button"
                                         x-show="errorsCounters.person > 0"
-                                        @click="openErrors('person', 'Persons not added', {{ json_encode($s['persons_failed'] ?? []) }})"
+                                        @click="openErrors('person', 'Не добавлены', {{ json_encode($s['persons_failed'] ?? []) }})"
                                         class="font-semibold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
                                         x-text="errorsCounters.person">
                                     </button>
@@ -255,13 +255,13 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                <span class="text-gray-500">Face</span>
+                                <span class="text-gray-500">Фото</span>
                                 <span class="font-semibold text-green-600">{{ $s['faces_added'] }}</span>
                                 <span class="text-gray-300">/</span>
                                 @if($s['faces_not_added'] > 0)
                                     <button type="button"
                                         x-show="errorsCounters.face > 0"
-                                        @click="openErrors('face', 'Faces not uploaded', {{ json_encode($s['faces_failed'] ?? []) }})"
+                                        @click="openErrors('face', 'Фото не загружены', {{ json_encode($s['faces_failed'] ?? []) }})"
                                         class="font-semibold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
                                         x-text="errorsCounters.face">
                                     </button>
@@ -271,7 +271,7 @@
                                 @endif
                                 @if(($s['guests_skipped'] ?? 0) > 0)
                                     <span class="text-gray-300 mx-0.5">·</span>
-                                    <span class="text-gray-400" title="Guest/reception badge records — no photo expected">{{ $s['guests_skipped'] }} guest(s) skipped</span>
+                                    <span class="text-gray-400" title="Гостевые/пропускные записи — фото не ожидается">пропущено гостей: {{ $s['guests_skipped'] }}</span>
                                 @endif
                             </div>
 
@@ -280,13 +280,13 @@
                                 <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
                                 </svg>
-                                <span class="text-gray-500">Card</span>
+                                <span class="text-gray-500">Карты</span>
                                 <span class="font-semibold text-green-600">{{ $s['cards_added'] }}</span>
                                 <span class="text-gray-300">/</span>
                                 @if($s['cards_not_added'] > 0)
                                     <button type="button"
                                         x-show="errorsCounters.card > 0"
-                                        @click="openErrors('card', 'Cards not synced', {{ json_encode($s['cards_failed'] ?? []) }})"
+                                        @click="openErrors('card', 'Карты не синхронизированы', {{ json_encode($s['cards_failed'] ?? []) }})"
                                         class="font-semibold text-red-500 hover:text-red-700 hover:underline cursor-pointer"
                                         x-text="errorsCounters.card">
                                     </button>
@@ -332,7 +332,7 @@
                             {{-- Body --}}
                             <div class="overflow-y-auto flex-1 min-h-0 px-5 py-3">
                                 <div x-show="errorsModal.list.length === 0" class="py-10 text-center text-sm text-gray-400">
-                                    No employees
+                                    Нет сотрудников
                                 </div>
                                 <div class="divide-y divide-gray-50">
                                     <template x-for="emp in errorsModal.list" :key="emp.emp_code">
@@ -345,7 +345,7 @@
                                                 <template x-if="errorsResults[emp.emp_code] && errorsResults[emp.emp_code].success">
                                                     <div class="flex items-center gap-2">
                                                         <template x-if="errorsResults[emp.emp_code].has_face">
-                                                            <span title="Face uploaded">
+                                                            <span title="Фото загружено">
                                                                 <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -364,7 +364,7 @@
                                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                                             </svg>
-                                                            Synced
+                                                            Синхронизировано
                                                         </span>
                                                     </div>
                                                 </template>
@@ -373,7 +373,7 @@
                                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                                         </svg>
-                                                        Error
+                                                        Ошибка
                                                     </span>
                                                 </template>
                                                 <template x-if="!errorsResults[emp.emp_code]">
@@ -390,7 +390,7 @@
                                                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                                                         </svg>
-                                                        Sync
+                                                        Синхронизировать
                                                     </button>
                                                 </template>
                                             </div>
@@ -422,13 +422,13 @@
                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-900">{{ $terminal->name }}</h3>
-                                <p class="text-xs text-gray-400 mt-0.5" x-text="employees.length + ' employees linked'"></p>
+                                <p class="text-xs text-gray-400 mt-0.5" x-text="employees.length + ' сотрудников привязано'"></p>
                             </div>
                             <div class="flex items-center gap-3">
                                 <input
                                     x-model="employeeSearch"
                                     type="text"
-                                    placeholder="Search..."
+                                    placeholder="Поиск..."
                                     class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-40 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                 />
                                 <button @click="showEmployees = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -448,12 +448,12 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                 </svg>
-                                Loading...
+                                Загрузка...
                             </div>
 
                             {{-- Empty --}}
                             <div x-show="!loadingEmployees && filteredEmployees.length === 0" class="py-12 text-center text-sm text-gray-400">
-                                No employees found
+                                Сотрудники не найдены
                             </div>
 
                             {{-- Employee list --}}
@@ -466,7 +466,7 @@
                                         </div>
                                         <div class="flex items-center gap-2 flex-shrink-0">
                                             <template x-if="emp.has_face">
-                                                <span title="Face photo on terminal">
+                                                <span title="Фото на терминале">
                                                     <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -482,7 +482,7 @@
                                                 </span>
                                             </template>
                                             <template x-if="!emp.card_no">
-                                                <span class="text-xs text-gray-300">No card</span>
+                                                <span class="text-xs text-gray-300">Нет карты</span>
                                             </template>
 
                                             {{-- Resync button --}}
@@ -491,7 +491,7 @@
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                                                     </svg>
-                                                    Synced
+                                                    Синхронизировано
                                                 </span>
                                             </template>
                                             <template x-if="resyncResults[emp.emp_code] && resyncResults[emp.emp_code] !== 'success'">
@@ -499,7 +499,7 @@
                                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                                                     </svg>
-                                                    Error
+                                                    Ошибка
                                                 </span>
                                             </template>
                                             <template x-if="!resyncResults[emp.emp_code]">
@@ -507,7 +507,7 @@
                                                     type="button"
                                                     @click="resyncEmployee(emp.emp_code)"
                                                     :disabled="resyncingEmp === emp.emp_code"
-                                                    :title="resyncingEmp === emp.emp_code ? 'Syncing...' : 'Re-sync from local DB'"
+                                                    :title="resyncingEmp === emp.emp_code ? 'Синхронизация...' : 'Синхронизировать из локальной БД'"
                                                     class="inline-flex items-center px-2 py-0.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                                                 >
                                                     <svg x-show="resyncingEmp !== emp.emp_code" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -529,7 +529,7 @@
                         <div x-show="!loadingEmployees && employees.length > 0" class="px-5 py-4 border-t border-gray-100 flex-shrink-0">
                             <button type="button"
                                 x-show="!deleting"
-                                @click="if (confirm('Delete ALL ' + employees.length + ' employees from this terminal?')) {
+                                @click="if (confirm('Удалить ВСЕХ (' + employees.length + ') сотрудников с этого терминала?')) {
                                     deleting = true;
                                     fetch('{{ route('hikvision.employees.delete-all', $terminal) }}', {
                                         method: 'DELETE',
@@ -540,14 +540,14 @@
                                     .catch(() => { deleting = false; });
                                 }"
                                 class="w-full px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
-                                Delete All from Terminal
+                                Удалить всех с терминала
                             </button>
                             <div x-show="deleting" class="flex items-center justify-center gap-2 text-sm text-red-500 py-2">
                                 <svg class="animate-spin h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                                 </svg>
-                                Deleting...
+                                Удаление...
                             </div>
                         </div>
                     </div>
@@ -556,9 +556,9 @@
             </div>
         @empty
             <div class="bg-white rounded-lg border border-gray-200 px-4 py-12 text-center">
-                <p class="text-sm text-gray-500 mb-4">No Hikvision terminals configured yet.</p>
+                <p class="text-sm text-gray-500 mb-4">Терминалы Hikvision ещё не настроены.</p>
                 <a href="{{ route('hikvision.create') }}" style="background-color:#4f46e5;color:#fff;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:600;border-radius:0.5rem;text-decoration:none;display:inline-block">
-                    Add Terminal
+                    Добавить терминал
                 </a>
             </div>
         @endforelse

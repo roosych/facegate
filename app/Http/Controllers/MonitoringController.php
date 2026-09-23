@@ -68,14 +68,14 @@ class MonitoringController extends Controller
     {
         Artisan::call('queue:retry', ['id' => [$uuid]]);
 
-        return redirect()->route('monitoring.index')->with('success', 'Job queued for retry.');
+        return redirect()->route('monitoring.index')->with('success', 'Задача поставлена в очередь на повтор.');
     }
 
     public function forgetFailedJob(string $uuid): RedirectResponse
     {
         Artisan::call('queue:forget', ['id' => $uuid]);
 
-        return redirect()->route('monitoring.index')->with('success', 'Failed job removed.');
+        return redirect()->route('monitoring.index')->with('success', 'Задача с ошибкой удалена.');
     }
 
     /**
@@ -93,7 +93,7 @@ class MonitoringController extends Controller
         $terminal->update(['sync_stats' => $stats]);
 
         return redirect()->route('monitoring.index')
-            ->with('success', "Cleared {$cleared} remembered photo problem(s) on \"{$terminal->name}\" — the next sync will retry them.");
+            ->with('success', "Очищено запомненных проблем с фото на «{$terminal->name}»: {$cleared} — следующая синхронизация повторит попытку.");
     }
 
     /**

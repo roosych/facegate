@@ -1,11 +1,11 @@
 <x-app-layout>
-    @section('subtitle', 'Sync employees to Hikvision terminals')
-    @section('title', 'Hikvision Sync')
+    @section('subtitle', 'Синхронизация сотрудников с терминалами Hikvision')
+    @section('title', 'Синхронизация Hikvision')
 
     <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-5 py-4 mb-5">
-        <p class="text-sm text-gray-500">Push employees from local DB to Hikvision terminals</p>
+        <p class="text-sm text-gray-500">Отправка сотрудников из локальной БД на терминалы Hikvision</p>
         <a href="{{ route('hikvision.index') }}" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-            Manage Terminals
+            Управление терминалами
         </a>
     </div>
 
@@ -47,7 +47,7 @@
                                 <span class="inline-flex px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">{{ $terminal->accessPoint->name }}</span>
                             </div>
                         @else
-                            <p class="text-xs text-amber-600 mb-3">No access point linked — assign one in terminal settings.</p>
+                            <p class="text-xs text-amber-600 mb-3">Точка доступа не привязана — назначьте её в настройках терминала.</p>
                         @endif
 
                         {{-- Sync status --}}
@@ -57,17 +57,17 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                                 </svg>
-                                <span x-text="status?.status === 'queued' ? 'Queued...' : 'Syncing ' + (status?.done ?? 0) + '/' + (status?.total ?? '?') + ' · ' + (status?.synced ?? 0) + ' synced'"></span>
+                                <span x-text="status?.status === 'queued' ? 'В очереди...' : 'Синхронизация ' + (status?.done ?? 0) + '/' + (status?.total ?? '?') + ' · синхронизировано ' + (status?.synced ?? 0)"></span>
                             </div>
 
                             <div x-show="status?.status === 'done'" class="text-xs text-green-600">
-                                Done — <span x-text="status?.synced ?? 0"></span> synced,
-                                <span x-text="status?.removed ?? 0"></span> removed,
-                                <span x-text="status?.errors ?? 0"></span> errors
+                                Готово — синхронизировано <span x-text="status?.synced ?? 0"></span>,
+                                удалено <span x-text="status?.removed ?? 0"></span>,
+                                ошибок <span x-text="status?.errors ?? 0"></span>
                             </div>
 
                             <div x-show="status?.status === 'failed'" class="text-xs text-red-600">
-                                Failed: <span x-text="status?.message"></span>
+                                Ошибка: <span x-text="status?.message"></span>
                             </div>
                         </div>
                     </div>
@@ -85,16 +85,16 @@
                                 }).then(() => poll(true));
                             "
                         >
-                            Sync
+                            Синхронизировать
                         </button>
                     </div>
                 </div>
             </div>
         @empty
             <div class="bg-white rounded-lg border border-gray-200 px-4 py-12 text-center">
-                <p class="text-sm text-gray-500 mb-4">No active Hikvision terminals.</p>
+                <p class="text-sm text-gray-500 mb-4">Нет активных терминалов Hikvision.</p>
                 <a href="{{ route('hikvision.create') }}" style="background-color:#4f46e5;color:#fff;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:600;border-radius:0.5rem;text-decoration:none;display:inline-block">
-                    Add Terminal
+                    Добавить терминал
                 </a>
             </div>
         @endforelse

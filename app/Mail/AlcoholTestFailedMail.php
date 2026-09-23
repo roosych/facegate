@@ -18,10 +18,10 @@ class AlcoholTestFailedMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        $name = $this->event->employee?->full_name ?? 'Unknown employee';
+        $name = $this->event->employee?->full_name ?? 'Неизвестный сотрудник';
 
         return new Envelope(
-            subject: "Alcohol test failed — {$name}",
+            subject: "Провален тест на алкоголь — {$name}",
         );
     }
 
@@ -30,12 +30,12 @@ class AlcoholTestFailedMail extends Mailable implements ShouldQueue
         return new Content(
             markdown: 'mail.alcohol-test-failed',
             with: [
-                'employeeName' => $this->event->employee?->full_name ?? 'Unknown employee',
-                'terminalName' => $this->event->hikvisionTerminal?->name ?? 'Unknown terminal',
+                'employeeName' => $this->event->employee?->full_name ?? 'Неизвестный сотрудник',
+                'terminalName' => $this->event->hikvisionTerminal?->name ?? 'Неизвестный терминал',
                 'eventTime' => $this->event->event_time,
                 'concentration' => $this->event->alcoholConcentration(),
                 'promille' => $this->event->alcoholPromille(),
-                'result' => $this->event->raw_data['alcoholDetectionInfo']['result'] ?? 'unknown',
+                'result' => $this->event->raw_data['alcoholDetectionInfo']['result'] ?? 'неизвестно',
             ],
         );
     }

@@ -19,7 +19,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
-// No login on a kiosk screen mounted at a turnstile — a signed URL is the only guard.
+// No login on a monitor screen stationed at a turnstile location (guard post, reception, etc.)
+// — a signed URL is the only guard.
 // The screen routes ({monitorScreen}) are the supported path (managed at /monitor-screens): a
 // stable URL that keeps working after the admin changes which turnstiles it shows. The
 // {accessPoints} routes (one or more AccessPoint ids joined by commas, e.g. "44,45") are a raw

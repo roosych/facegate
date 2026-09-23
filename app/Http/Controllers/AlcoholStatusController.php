@@ -49,7 +49,7 @@ class AlcoholStatusController extends Controller
 
         Setting::set('alcohol_skip_grace_minutes', (string) $validated['grace_minutes']);
 
-        return redirect()->route('alcohol.index')->with('success', 'Grace period updated.');
+        return redirect()->route('alcohol.index')->with('success', 'Льготный период обновлён.');
     }
 
     public function updateNotificationSettings(Request $request): RedirectResponse
@@ -63,14 +63,14 @@ class AlcoholStatusController extends Controller
 
         foreach ($emails as $email) {
             if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return back()->withErrors(['notification_emails' => "\"{$email}\" is not a valid email address."])->withInput();
+                return back()->withErrors(['notification_emails' => "\"{$email}\" — некорректный email-адрес."])->withInput();
             }
         }
 
         Setting::set('alcohol_notification_threshold', (string) $validated['notification_threshold']);
         Setting::set('alcohol_notification_emails', implode(',', $emails));
 
-        return redirect()->route('alcohol.index')->with('success', 'Notification settings updated.');
+        return redirect()->route('alcohol.index')->with('success', 'Настройки уведомлений обновлены.');
     }
 
     /**
@@ -87,6 +87,6 @@ class AlcoholStatusController extends Controller
             (new HikvisionService($terminal))->setAlcoholSkip((string) $employee->emp_code, false);
         }
 
-        return redirect()->route('alcohol.index')->with('success', "Skip cleared for {$employee->full_name} — next pass will require a test.");
+        return redirect()->route('alcohol.index')->with('success', "Пропуск сброшен для {$employee->full_name} — при следующем проходе потребуется тест.");
     }
 }

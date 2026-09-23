@@ -45,7 +45,7 @@ class SyncController extends Controller
             return response()->json(['ok' => true]);
         }
 
-        return redirect()->back()->with('success', "Sync started for \"{$accessPoint->name}\".");
+        return redirect()->back()->with('success', "Синхронизация запущена для «{$accessPoint->name}».");
     }
 
     public function syncAll(): JsonResponse|RedirectResponse

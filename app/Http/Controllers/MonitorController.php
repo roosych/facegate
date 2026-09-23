@@ -14,10 +14,10 @@ use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Public, no-login kiosk screen mounted on a monitor facing one or more turnstiles. Reachable
- * only via a signed URL (no predictable /monitor/{id}), since there's no session to gate it
- * with. See HikvisionEventWebhookController::cacheForMonitor() for where the data this reads
- * comes from.
+ * Public, no-login screen for a monitor stationed at a turnstile location (a guard post,
+ * reception desk, etc.), facing one or more turnstiles. Reachable only via a signed URL (no
+ * predictable /monitor/{id}), since there's no session to gate it with. See
+ * HikvisionEventWebhookController::cacheForMonitor() for where the data this reads comes from.
  *
  * One block is rendered per AccessPoint (turnstile), not per HikvisionTerminal: a turnstile
  * commonly has an "in" and an "out" terminal, but the screen shows whichever one most recently

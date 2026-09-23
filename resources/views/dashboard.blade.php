@@ -1,51 +1,51 @@
 <x-app-layout>
-    @section('subtitle', 'System overview')
-    @section('title', 'Dashboard')
+    @section('subtitle', 'Обзор системы')
+    @section('title', 'Панель управления')
 
     {{-- Stats row --}}
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">Employees</p>
+            <p class="text-xs text-gray-400 font-medium">Сотрудники</p>
             <p class="mt-1 text-2xl font-bold text-indigo-600">{{ $stats['employees'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['active_employees'] }} active</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['active_employees'] }} активны</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">Access Points</p>
+            <p class="text-xs text-gray-400 font-medium">Точки доступа</p>
             <p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['accessPoints'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['terminals'] }} terminals</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['terminals'] }} терминалов</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">Events Today</p>
+            <p class="text-xs text-gray-400 font-medium">Событий сегодня</p>
             <p class="mt-1 text-2xl font-bold text-emerald-600">{{ $stats['events_today'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['events_week'] }} this week</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['events_week'] }} за неделю</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">Failed Syncs</p>
+            <p class="text-xs text-gray-400 font-medium">Ошибок синхронизации</p>
             <p class="mt-1 text-2xl font-bold {{ $stats['failed_syncs'] > 0 ? 'text-red-500' : 'text-gray-400' }}">{{ $stats['failed_syncs'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">today</p>
+            <p class="text-xs text-gray-400 mt-0.5">сегодня</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
-            <p class="text-xs text-gray-400 font-medium">No Card</p>
+            <p class="text-xs text-gray-400 font-medium">Без карты</p>
             <p class="mt-1 text-2xl font-bold {{ $stats['no_card'] > 0 ? 'text-amber-500' : 'text-gray-400' }}">{{ $stats['no_card'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">employees</p>
+            <p class="text-xs text-gray-400 mt-0.5">сотрудников</p>
         </div>
     </div>
 
     {{-- Quick Actions --}}
     <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
-        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Quick Actions</h2>
+        <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Быстрые действия</h2>
         <div class="flex flex-wrap gap-2">
             <form method="POST" action="{{ route('sync.all') }}">
                 @csrf
                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
-                    Sync All Access Points
+                    Синхронизировать все точки доступа
                 </button>
             </form>
             <a href="{{ route('employees.index') }}" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                Employees
+                Сотрудники
             </a>
             <a href="{{ route('access-points.index') }}" class="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                Access Points
+                Точки доступа
             </a>
         </div>
     </div>
@@ -76,11 +76,11 @@
         }"
     >
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Live Process Status</h2>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Статус процессов в реальном времени</h2>
             <span class="text-xs text-gray-400" x-show="data">
-                Queue: <span x-text="data?.queue?.pending ?? 0"></span> pending
+                Очередь: <span x-text="data?.queue?.pending ?? 0"></span> в ожидании
                 <template x-if="data?.failed_last_24h > 0">
-                    <span class="text-red-500 font-medium"> · <span x-text="data.failed_last_24h"></span> failed (24h)</span>
+                    <span class="text-red-500 font-medium"> · <span x-text="data.failed_last_24h"></span> ошибок (24ч)</span>
                 </template>
             </span>
         </div>
@@ -98,13 +98,13 @@
                     }"
                 ></span>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm text-gray-800">RusGuard → Local Sync</p>
+                    <p class="text-sm text-gray-800">Синхронизация RusGuard → Local</p>
                     <p
                         class="text-xs text-gray-400"
                         x-text="
                             ['pending', 'running'].includes(data?.rusguard_sync?.status)
-                                ? (data.rusguard_sync.current || 'Working...') + ' — ' + (data.rusguard_sync.emp_done ?? data.rusguard_sync.done ?? 0) + '/' + (data.rusguard_sync.emp_total ?? data.rusguard_sync.total ?? '?')
-                                : (!data?.rusguard_sync?.status || data?.rusguard_sync?.status === 'idle' ? 'Idle' : data.rusguard_sync.status)
+                                ? (data.rusguard_sync.current || 'Выполняется…') + ' — ' + (data.rusguard_sync.emp_done ?? data.rusguard_sync.done ?? 0) + '/' + (data.rusguard_sync.emp_total ?? data.rusguard_sync.total ?? '?')
+                                : (!data?.rusguard_sync?.status || data?.rusguard_sync?.status === 'idle' ? 'Простой' : data.rusguard_sync.status)
                         "
                     ></p>
                 </div>
@@ -125,26 +125,26 @@
                         <p class="text-sm text-gray-800 truncate" x-text="t.name"></p>
                         <p class="text-xs text-gray-400 truncate">
                             <template x-if="['pending', 'running'].includes(t.status)">
-                                <span x-text="'Syncing ' + (t.done ?? 0) + '/' + (t.total ?? '?')"></span>
+                                <span x-text="'Синхронизация ' + (t.done ?? 0) + '/' + (t.total ?? '?')"></span>
                             </template>
                             <template x-if="!['pending', 'running'].includes(t.status)">
-                                <span x-text="t.synced_at ? 'Last synced ' + t.synced_at : 'Never synced'"></span>
+                                <span x-text="t.synced_at ? 'Последняя синхронизация ' + t.synced_at : 'Ещё не синхронизировался'"></span>
                             </template>
                         </p>
                     </div>
                     <div class="text-right flex-shrink-0 text-xs space-y-0.5">
-                        <p x-show="t.persons_failed > 0" class="text-red-500" x-text="t.persons_failed + ' failed'"></p>
-                        <p x-show="t.alcohol_enabled && t.alcohol_failed > 0" class="text-amber-500" x-text="t.alcohol_failed + ' alco failed'"></p>
+                        <p x-show="t.persons_failed > 0" class="text-red-500" x-text="t.persons_failed + ' с ошибкой'"></p>
+                        <p x-show="t.alcohol_enabled && t.alcohol_failed > 0" class="text-amber-500" x-text="t.alcohol_failed + ' ошибок алкотеста'"></p>
                     </div>
                 </div>
             </template>
 
-            <p x-show="!data?.terminals || data.terminals.length === 0" class="text-sm text-gray-400 text-center py-6">No active terminals</p>
+            <p x-show="!data?.terminals || data.terminals.length === 0" class="text-sm text-gray-400 text-center py-6">Нет активных терминалов</p>
 
             {{-- Recent failures --}}
             <template x-if="data?.recent_failures?.length > 0">
                 <div class="px-5 py-2.5 bg-red-50/50">
-                    <p class="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1.5">Recent Failed Jobs</p>
+                    <p class="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1.5">Недавние сбои задач</p>
                     <template x-for="f in data.recent_failures" :key="f.failed_at + f.job">
                         <p class="text-xs text-gray-500">
                             <span x-text="f.job.replace('App\\\\Jobs\\\\', '')"></span>
@@ -163,11 +163,11 @@
         {{-- Recent Access Events --}}
         <div class="bg-white rounded-lg border border-gray-200">
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Recent Access Events</h2>
-                <span class="text-xs text-gray-400">{{ $stats['events_today'] }} today</span>
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Последние события доступа</h2>
+                <span class="text-xs text-gray-400">{{ $stats['events_today'] }} сегодня</span>
             </div>
             @if($recentEvents->isEmpty())
-                <p class="px-5 py-8 text-sm text-gray-400 text-center">No events yet</p>
+                <p class="px-5 py-8 text-sm text-gray-400 text-center">Пока нет событий</p>
             @else
                 <ul class="divide-y divide-gray-50">
                     @foreach($recentEvents as $event)
@@ -176,7 +176,7 @@
                             <span class="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-0.5 {{ $event->direction === 'in' ? 'bg-emerald-400' : 'bg-gray-300' }}"></span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm text-gray-800 truncate">
-                                    {{ $event->employee?->full_name ?? 'Unknown' }}
+                                    {{ $event->employee?->full_name ?? 'Неизвестно' }}
                                 </p>
                                 <p class="text-xs text-gray-400 truncate">{{ $event->accessPoint?->name ?? '—' }}</p>
                             </div>
@@ -193,17 +193,17 @@
         {{-- Recent Sync Activity --}}
         <div class="bg-white rounded-lg border border-gray-200">
             <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Recent Sync Activity</h2>
+                <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Последняя синхронизация</h2>
                 @if($stats['failed_syncs'] > 0)
-                    <span class="text-xs font-medium text-red-500">{{ $stats['failed_syncs'] }} failed today</span>
+                    <span class="text-xs font-medium text-red-500">{{ $stats['failed_syncs'] }} ошибок сегодня</span>
                 @else
                     <span class="text-xs text-gray-400">
-                        {{ $stats['last_sync'] ? \Carbon\Carbon::parse($stats['last_sync'])->diffForHumans() : 'Never' }}
+                        {{ $stats['last_sync'] ? \Carbon\Carbon::parse($stats['last_sync'])->diffForHumans() : 'Никогда' }}
                     </span>
                 @endif
             </div>
             @if($recentSyncs->isEmpty())
-                <p class="px-5 py-8 text-sm text-gray-400 text-center">No sync activity yet</p>
+                <p class="px-5 py-8 text-sm text-gray-400 text-center">Пока нет активности синхронизации</p>
             @else
                 <ul class="divide-y divide-gray-50">
                     @foreach($recentSyncs as $sync)

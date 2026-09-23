@@ -10,8 +10,9 @@ use Illuminate\View\View;
 
 /**
  * Admin CRUD for named, persistent monitor screens (see MonitorScreen doc comment). This is the
- * supported way to point a physical kiosk browser at a stable URL showing one or more turnstiles
- * — replaces picking access points ad hoc every time a screen needs to be (re)opened.
+ * supported way to point the browser on a physical monitor (at a guard post, reception desk,
+ * etc.) at a stable URL showing one or more turnstiles — replaces picking access points ad hoc
+ * every time a screen needs to be (re)opened.
  */
 class MonitorScreenController extends Controller
 {

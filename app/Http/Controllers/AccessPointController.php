@@ -57,7 +57,7 @@ class AccessPointController extends Controller
 
         AccessPoint::create($validated);
 
-        return redirect()->route('access-points.index')->with('success', 'Access point created.');
+        return redirect()->route('access-points.index')->with('success', 'Точка доступа создана.');
     }
 
     public function edit(AccessPoint $accessPoint, RusGuardDatabaseService $db): View
@@ -78,7 +78,7 @@ class AccessPointController extends Controller
 
         $accessPoint->update($validated);
 
-        return redirect()->route('access-points.index')->with('success', 'Access point updated.');
+        return redirect()->route('access-points.index')->with('success', 'Точка доступа обновлена.');
     }
 
     public function checkPoints(RusGuardDatabaseService $db): JsonResponse
