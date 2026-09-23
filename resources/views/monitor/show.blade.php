@@ -170,6 +170,25 @@
                 3 => 'grid-cols-3',
                 default => 'grid-cols-4',
             };
+
+            // Capping the whole card by height (an earlier version of this) meant shrinking its
+            // WIDTH too, since the photo's width drove its height via aspect-[480/650] — on a
+            // short window the card (and the empty column around it, once it no longer filled a
+            // full-width grid track) ended up tiny with dead space on either side. A card should
+            // always use the full width its column gives it, exactly like on the tall wall-mounted
+            // monitors these screens are built for; only the PHOTO needs to answer to the window's
+            // height, and it can do that by letterboxing (object-contain, already in place below)
+            // rather than by shrinking the whole card.
+            //
+            // 29.5rem is the fixed vertical overhead a card carries around its photo regardless of
+            // window size — measured, not guessed: 15rem of page chrome that's the same for every
+            // card (the fixed header + this page's own py-20 above and below), plus ~14.5rem for
+            // the card's own label/name/department text above and below the photo (stable only
+            // because that text truncates instead of wrapping — see the department/position lines
+            // below). Below that budget the photo box just gets a bit shorter (with more of its
+            // own background showing beside the now-relatively-narrower photo), not the whole
+            // card squeezed smaller.
+            $photoMaxHeight = 'calc(100vh - 29.5rem)';
         @endphp
         <main class="w-full pt-20 min-h-screen bg-[#f9f9f9] flex flex-col justify-center">
             <div class="w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-12 py-20">
@@ -197,16 +216,21 @@
 
                             {{-- 480×650 — the actual photo size, so the placeholder text (waiting for a
                                  pass / pass happened but no photo on file) sits in an identically
-                                 sized box and nothing jumps around once a real photo arrives. --}}
+                                 sized box and nothing jumps around once a real photo arrives.
+                                 max-height (see $photoMaxHeight above) only ever makes this
+                                 shorter than the 480:650 ratio would on its own — width stays at
+                                 the card's full width regardless, and object-contain below shrinks
+                                 the image to fit inside that shorter box instead of cropping it. --}}
                             <div
                                 class="w-full aspect-[480/650] overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 relative"
+                                style="max-height: {{ $photoMaxHeight }}"
                                 :class="alcoholFailed({{ $accessPoint->id }}) ? 'monitor-photo-alert' : ''"
                             >
                                 <template x-if="data[{{ $accessPoint->id }}]?.event?.photo_url">
                                     <img
                                         :src="data[{{ $accessPoint->id }}].event.photo_url"
                                         :alt="data[{{ $accessPoint->id }}].event.employee_name ?? ''"
-                                        class="w-full h-full object-cover"
+                                        class="w-full h-full object-contain"
                                     >
                                 </template>
                                 <template x-if="data[{{ $accessPoint->id }}]?.event && !data[{{ $accessPoint->id }}]?.event?.photo_url">
@@ -234,9 +258,13 @@
                                      line-height is 2rem), and line-clamp-2 caps anything longer with an
                                      ellipsis — a one-word name and a two-line one take up the same space. --}}
                                 <h2 class="text-2xl font-bold text-[#212529] tracking-tight leading-8 min-h-[4rem] line-clamp-2" x-text="data[{{ $accessPoint->id }}]?.event?.employee_name ?? 'Naməlum işçi'"></h2>
+                                {{-- truncate (not wrap) keeps this block's height constant across
+                                     every card width — the viewport-height sizing above depends on
+                                     it; a department/position that wrapped to a second line at a
+                                     narrower width would silently throw that math off. --}}
                                 <div class="flex flex-col gap-0.5 mt-1">
-                                    <p class="text-sm text-[#6b7178]"><span class="font-semibold text-[#44474a]">Şöbə:</span> <span x-text="data[{{ $accessPoint->id }}]?.event?.department || '—'"></span></p>
-                                    <p class="text-sm text-[#6b7178]"><span class="font-semibold text-[#44474a]">Vəzifə:</span> <span x-text="data[{{ $accessPoint->id }}]?.event?.position || '—'"></span></p>
+                                    <p class="text-sm text-[#6b7178] truncate"><span class="font-semibold text-[#44474a]">Şöbə:</span> <span x-text="data[{{ $accessPoint->id }}]?.event?.department || '—'"></span></p>
+                                    <p class="text-sm text-[#6b7178] truncate"><span class="font-semibold text-[#44474a]">Vəzifə:</span> <span x-text="data[{{ $accessPoint->id }}]?.event?.position || '—'"></span></p>
                                 </div>
                             </div>
                         </div>
