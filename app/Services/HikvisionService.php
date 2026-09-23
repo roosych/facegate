@@ -248,11 +248,7 @@ class HikvisionService
                 ],
             ]);
 
-        if (! $response->successful() && $response->status() !== 404) {
-            throw new RuntimeException(
-                'Failed to delete employee '.$employee->emp_code.': '.$response->body()
-            );
-        }
+        $this->assertIsapiDeleteSucceeded($response, 'employee '.$employee->emp_code);
     }
 
     /**
@@ -262,7 +258,7 @@ class HikvisionService
     {
         $this->guardWrite();
 
-        $this->http()
+        $response = $this->http()
             ->withHeaders(['Content-Type' => 'application/json'])
             ->put('/ISAPI/AccessControl/UserInfo/Delete?format=json', [
                 'UserInfoDelCond' => [
@@ -271,6 +267,37 @@ class HikvisionService
                     ],
                 ],
             ]);
+
+        $this->assertIsapiDeleteSucceeded($response, 'employee '.$empCode);
+    }
+
+    /**
+     * Validate an ISAPI delete response. The device answers with HTTP 200 even when it refuses
+     * the operation — the real outcome is the JSON envelope's `statusCode` (1 = ok; any other
+     * value means rejected, with detail in `subStatusCode`/`errorMsg`), a field this project
+     * already reads for other endpoints (see uploadFace()'s subStatusCode checks). Checking only
+     * $response->successful() therefore logs "success" for a delete the device silently ignored
+     * — discovered 2026-09-22 when 933 logged-successful removals left 400+ persons still on a
+     * terminal. A 404 is treated as "already gone", matching the pre-existing intent here.
+     */
+    private function assertIsapiDeleteSucceeded(Response $response, string $what): void
+    {
+        if ($response->status() === 404) {
+            return;
+        }
+
+        if (! $response->successful()) {
+            throw new RuntimeException("Failed to delete {$what}: ".$response->body());
+        }
+
+        $statusCode = $response->json('statusCode');
+
+        if ($statusCode !== null && (int) $statusCode !== 1) {
+            throw new RuntimeException(
+                "Failed to delete {$what}: device rejected the request (statusCode={$statusCode}, subStatusCode="
+                .($response->json('subStatusCode') ?? '?').', '.($response->json('errorMsg') ?? $response->body()).')'
+            );
+        }
     }
 
     /**
@@ -421,11 +448,7 @@ class HikvisionService
                 ],
             ]);
 
-        if (! $response->successful() && $response->status() !== 404) {
-            throw new RuntimeException(
-                'Failed to delete cards for '.$empCode.' on '.$this->terminal->name.': '.$response->body()
-            );
-        }
+        $this->assertIsapiDeleteSucceeded($response, 'cards for '.$empCode.' on '.$this->terminal->name);
     }
 
     /**
@@ -448,11 +471,7 @@ class HikvisionService
                 ],
             ]);
 
-        if (! $response->successful() && $response->status() !== 404) {
-            throw new RuntimeException(
-                'Failed to delete face for '.$empCode.' on '.$this->terminal->name.': '.$response->body()
-            );
-        }
+        $this->assertIsapiDeleteSucceeded($response, 'face for '.$empCode.' on '.$this->terminal->name);
     }
 
     /**
