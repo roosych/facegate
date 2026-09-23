@@ -170,16 +170,36 @@
                 3 => 'grid-cols-3',
                 default => 'grid-cols-4',
             };
+
+            // A card's width alone drives its height, via aspect-[480/650] on the photo below —
+            // there was nothing here capping it by the window's actual HEIGHT. Fine on the wide,
+            // tall wall-mounted monitors these screens are built for, but a laptop's browser
+            // window is often just as wide while having far less vertical room (a shorter panel,
+            // further eaten by the browser's own chrome), so the same card overflows the
+            // viewport and a scrollbar appears. ~29rem approximates everything around the photo
+            // that also eats vertical space (the fixed header, this page's own padding, and the
+            // card's own label/name/department text) — generous on purpose, so this only ever
+            // kicks in once height is genuinely tight, not on every ordinary resize.
+            //
+            // This is a plain `style` attribute, not a Tailwind arbitrary-value class: Tailwind's
+            // v4 scanner doesn't pick up a min(calc(...), calc(...)) with a comma inside it (it
+            // silently compiles to nothing, no build error), and the value is genuinely dynamic
+            // per render anyway (it depends on $accessPoints->count()), not a fixed utility.
+            $heightCappedWidth = 'calc((100vh - 29rem) * 480 / 650)';
+            $maxWidth = $accessPoints->count() === 1
+                ? "min(calc(50% - 1rem), {$heightCappedWidth})"
+                : $heightCappedWidth;
         @endphp
         <main class="w-full pt-20 min-h-screen bg-[#f9f9f9] flex flex-col justify-center">
             <div class="w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-12 py-20">
                 <div class="grid {{ $columns }} items-stretch gap-4 sm:gap-6 md:gap-8">
                     @forelse($accessPoints as $accessPoint)
-                        {{-- A single turnstile still gets its own row, but at the same width a
-                             card would have next to a neighbour, not stretched across the whole
-                             container. --}}
+                        {{-- mx-auto centers a card once its max-width (a single turnstile's own
+                             cap, and/or the height cap above) makes it narrower than its grid
+                             column, instead of leaving it stuck to one edge. --}}
                         <div
-                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative {{ $accessPoints->count() === 1 ? 'mx-auto w-full max-w-[calc(50%-1rem)]' : '' }}"
+                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative mx-auto w-full"
+                            style="max-width: {{ $maxWidth }}"
                             :class="blockClasses({{ $accessPoint->id }})"
                         >
                             {{-- Small label above the header row — the reference this layout is based on
