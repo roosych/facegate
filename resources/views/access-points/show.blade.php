@@ -18,13 +18,16 @@
                     @endif
                 </dd></div>
             </dl>
-            <div class="mt-4">
+            <div class="mt-4 space-y-2">
                 <form method="POST" action="{{ route('sync.access-point', $accessPoint) }}">
                     @csrf
                     <button type="submit" class="w-full px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors">
                         Sync This Access Point
                     </button>
                 </form>
+                <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('monitor.show', ['accessPoints' => (string) $accessPoint->id]) }}" target="_blank" class="block text-center w-full px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
+                    Open Monitor
+                </a>
             </div>
         </div>
 

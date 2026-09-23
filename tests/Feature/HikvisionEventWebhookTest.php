@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Services\RusGuard\RusGuardDatabaseService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Mockery;
 use Tests\TestCase;
 
@@ -130,6 +131,89 @@ class HikvisionEventWebhookTest extends TestCase
 
         $response->assertOk();
         $this->assertSame(0, AccessEvent::count());
+    }
+
+    /**
+     * The monitor screen needs every identified pass, not just ones with an alcohol reading —
+     * access_events (via ingest()) intentionally stays alcohol-only, so this caches a separate,
+     * lightweight snapshot for display purposes.
+     */
+    public function test_caches_the_latest_event_for_the_monitor_screen_even_without_alcohol_data(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create();
+        $employee = Employee::factory()->create([
+            'emp_code' => 42,
+            'last_name' => 'Petrov',
+            'position' => 'Mütəxəssis',
+            'department' => 'İT şöbəsi',
+        ]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldNotReceive('getEmployeesRequiringAlcoholTest');
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        $response = $this->postJson("/api/hikvision/{$terminal->id}/events/test-token", [
+            'AccessControllerEvent' => [
+                'employeeNoString' => '42',
+                'time' => now()->toIso8601String(),
+            ],
+        ]);
+
+        $response->assertOk();
+        $this->assertSame(0, AccessEvent::count());
+
+        $cached = Cache::get($terminal->fresh()->monitorCacheKey());
+        $this->assertNotNull($cached);
+        $this->assertSame($employee->id, $cached['employee_id']);
+        $this->assertSame('Mütəxəssis', $cached['position']);
+        $this->assertSame('İT şöbəsi', $cached['department']);
+        $this->assertFalse($cached['alcohol_tested']);
+        $this->assertNull($cached['alcohol_passed']);
+    }
+
+    public function test_monitor_cache_uses_the_terminal_time_not_the_server_clock(): void
+    {
+        config(['app.timezone' => 'America/New_York']);
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        $this->postJson("/api/hikvision/{$terminal->id}/events/test-token", [
+            'AccessControllerEvent' => [
+                'employeeNoString' => '42',
+                'time' => '2026-09-21T07:31:07+04:00',
+            ],
+        ])->assertOk();
+
+        $cached = Cache::get($terminal->fresh()->monitorCacheKey());
+        $this->assertSame('2026-09-20T23:31:07-04:00', $cached['event_time']);
+    }
+
+    public function test_caches_a_failed_alcohol_test_for_the_monitor_screen(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create();
+        Employee::factory()->create(['emp_code' => 42]);
+
+        $rusGuardDb = Mockery::mock(RusGuardDatabaseService::class);
+        $rusGuardDb->shouldReceive('getEmployeesRequiringAlcoholTest')->once()->andReturn([]);
+        $this->app->instance(RusGuardDatabaseService::class, $rusGuardDb);
+
+        $response = $this->postJson("/api/hikvision/{$terminal->id}/events/test-token", [
+            'AccessControllerEvent' => [
+                'employeeNoString' => '42',
+                'time' => now()->toIso8601String(),
+                'alcoholDetectionInfo' => ['result' => 'abnormal', 'concentrationInfo' => ['concentrationValue' => 55]],
+            ],
+        ]);
+
+        $response->assertOk();
+
+        $cached = Cache::get($terminal->fresh()->monitorCacheKey());
+        $this->assertTrue($cached['alcohol_tested']);
+        $this->assertFalse($cached['alcohol_passed']);
+        $this->assertSame(55, $cached['alcohol_concentration']);
     }
 
     public function test_ingests_an_alcohol_detection_event_key(): void

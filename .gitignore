@@ -8,6 +8,7 @@
 /.fleet
 /.idea
 /.nova
+/.playwright-mcp
 /.phpunit.cache
 /.vscode
 /.zed

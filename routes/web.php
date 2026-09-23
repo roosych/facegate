@@ -8,7 +8,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\HikvisionSyncController;
 use App\Http\Controllers\HikvisionTerminalController;
+use App\Http\Controllers\MonitorController;
 use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\MonitorScreenController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RusGuardController;
 use App\Http\Controllers\SyncController;
@@ -16,6 +18,24 @@ use App\Http\Controllers\SyncLogController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
+
+// No login on a kiosk screen mounted at a turnstile — a signed URL is the only guard.
+// The screen routes ({monitorScreen}) are the supported path (managed at /monitor-screens): a
+// stable URL that keeps working after the admin changes which turnstiles it shows. The
+// {accessPoints} routes (one or more AccessPoint ids joined by commas, e.g. "44,45") are a raw
+// one-off alternative that bakes the list into the URL itself. Both render the same view — see
+// MonitorController for how each turnstile's own in/out terminals are merged into one block.
+Route::middleware('signed')->group(function () {
+    Route::get('/monitor/screen/{monitorScreen}', [MonitorController::class, 'showScreen'])->name('monitor.show-screen');
+    Route::get('/monitor/screen/{monitorScreen}/status', [MonitorController::class, 'statusScreen'])->name('monitor.status-screen');
+    Route::get('/monitor/{accessPoints}', [MonitorController::class, 'show'])
+        ->where('accessPoints', '[0-9]+(,[0-9]+)*')
+        ->name('monitor.show');
+    Route::get('/monitor/{accessPoints}/status', [MonitorController::class, 'status'])
+        ->where('accessPoints', '[0-9]+(,[0-9]+)*')
+        ->name('monitor.status');
+    Route::get('/monitor/{accessPoint}/employees/{employee}/photo', [MonitorController::class, 'photo'])->name('monitor.photo');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -31,6 +51,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/access-points/{accessPoint}/check-count', [AccessPointController::class, 'checkCount'])->name('access-points.check-count');
     Route::get('/access-points/{accessPoint}/rusguard-employees', [AccessPointController::class, 'rusguardEmployees'])->name('access-points.rusguard-employees');
     Route::get('/access-points/{accessPoint}', [AccessPointController::class, 'show'])->name('access-points.show');
+
+    Route::get('/monitor-screens', [MonitorScreenController::class, 'index'])->name('monitor-screens.index');
+    Route::get('/monitor-screens/create', [MonitorScreenController::class, 'create'])->name('monitor-screens.create');
+    Route::post('/monitor-screens', [MonitorScreenController::class, 'store'])->name('monitor-screens.store');
+    Route::get('/monitor-screens/{monitorScreen}/edit', [MonitorScreenController::class, 'edit'])->name('monitor-screens.edit');
+    Route::patch('/monitor-screens/{monitorScreen}', [MonitorScreenController::class, 'update'])->name('monitor-screens.update');
+    Route::delete('/monitor-screens/{monitorScreen}', [MonitorScreenController::class, 'destroy'])->name('monitor-screens.destroy');
 
     Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
     Route::get('/employees/{employee}/photo', [EmployeeController::class, 'photo'])->name('employees.photo');
