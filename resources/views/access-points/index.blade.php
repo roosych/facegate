@@ -133,12 +133,12 @@
                     {{-- Check points button --}}
                     <button type="button" @click="check()" :disabled="checking"
                         class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1.5">
-                        <svg x-show="checking" style="width:12px;height:12px;animation:rg-spin 0.75s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24">
+                        <svg x-show="checking" x-cloak style="width:12px;height:12px;animation:rg-spin 0.75s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="10" stroke="#c7d2fe" stroke-width="3"/>
                             <path d="M12 2a10 10 0 0 1 10 10" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
                         </svg>
                         <span x-show="!checking">Проверить точки</span>
-                        <span x-show="checking">Проверка...</span>
+                        <span x-show="checking" x-cloak>Проверка...</span>
                     </button>
 
                     {{-- Summary badge --}}
@@ -242,7 +242,7 @@
         </div>
 
         {{-- Progress block --}}
-        <div x-show="status !== 'idle'" x-transition style="margin-bottom:1rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem 1.5rem">
+        <div x-show="status !== 'idle'" x-cloak x-transition style="margin-bottom:1rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem 1.5rem">
 
             {{-- Pending --}}
             <div x-show="status === 'pending'" style="display:flex;align-items:center;gap:0.75rem">
@@ -417,7 +417,7 @@
                 </div>
 
                 {{-- Push progress --}}
-                <div x-show="syncStatus !== null" x-transition class="px-5 pb-3 -mt-1">
+                <div x-show="syncStatus !== null" x-cloak x-transition class="px-5 pb-3 -mt-1">
                     <div x-show="['queued','pending','running'].includes(syncStatus?.status)" class="flex items-center gap-2 text-xs text-indigo-600">
                         <svg class="animate-spin h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -576,7 +576,7 @@
                 </div>
 
                 {{-- Employee list --}}
-                <div x-show="expanded" x-transition class="border-t border-gray-100 px-5 py-4">
+                <div x-show="expanded" x-cloak x-transition class="border-t border-gray-100 px-5 py-4">
                     @if($accessPoint->employees->isNotEmpty())
                         <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5">
                             @foreach($accessPoint->employees as $employee)
