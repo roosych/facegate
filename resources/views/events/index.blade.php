@@ -1,6 +1,6 @@
 <x-app-layout>
-    @section('title', 'Alcohol Events')
-    @section('subtitle', 'Events with alcohol concentration > 0')
+    @section('title', 'События алкотеста')
+    @section('subtitle', 'События с концентрацией алкоголя > 0')
 
     @php
         $activeTerminal = request()->integer('terminal') ?: ($terminals->first()?->id ?? '');
@@ -21,10 +21,10 @@
             get statusText() {
                 if (!this.jobStatus) return '';
                 const s = this.jobStatus.status;
-                if (s === 'queued')  return 'Queued...';
-                if (s === 'running') return 'Importing... saved: ' + this.jobStatus.imported + ' / fetched: ' + this.jobStatus.total;
-                if (s === 'done')    return 'Done: ' + this.jobStatus.imported + ' new events (' + this.jobStatus.total + ' fetched from terminal)';
-                if (s === 'failed')  return 'Error: ' + (this.jobStatus.message || 'unknown error');
+                if (s === 'queued')  return 'В очереди...';
+                if (s === 'running') return 'Импорт... сохранено: ' + this.jobStatus.imported + ' / получено: ' + this.jobStatus.total;
+                if (s === 'done')    return 'Готово: новых событий ' + this.jobStatus.imported + ' (получено с терминала: ' + this.jobStatus.total + ')';
+                if (s === 'failed')  return 'Ошибка: ' + (this.jobStatus.message || 'неизвестная ошибка');
                 return '';
             },
             get statusColor() {
@@ -89,7 +89,7 @@
         >
             {{-- Terminal --}}
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Terminal</label>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Терминал</label>
                 <select
                     x-model="terminal"
                     name="terminal"
@@ -103,7 +103,7 @@
 
             {{-- Date from --}}
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">From</label>
+                <label class="block text-xs font-medium text-gray-500 mb-1">С</label>
                 <input
                     type="date"
                     x-model="start"
@@ -114,7 +114,7 @@
 
             {{-- Date to --}}
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">To</label>
+                <label class="block text-xs font-medium text-gray-500 mb-1">По</label>
                 <input
                     type="date"
                     x-model="end"
@@ -125,12 +125,12 @@
 
             {{-- Employee search --}}
             <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Employee</label>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Сотрудник</label>
                 <input
                     type="text"
                     name="employee"
                     value="{{ request('employee') }}"
-                    placeholder="Name or code"
+                    placeholder="Имя или код"
                     class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 >
             </div>
@@ -144,7 +144,7 @@
                         class="px-4 py-1.5 text-sm font-medium text-white rounded-lg transition-colors"
                         style="background-color:#4f46e5"
                     >
-                        Show
+                        Показать
                     </button>
                 </div>
 
@@ -163,14 +163,14 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                         </svg>
-                        <span x-text="loading ? 'Importing...' : 'Import'"></span>
+                        <span x-text="loading ? 'Импорт...' : 'Импортировать'"></span>
                     </button>
                 </div>
 
                 @if($hasFilters)
                     <div class="flex flex-col">
                         <label class="block text-xs font-medium text-transparent mb-1">-</label>
-                        <a href="{{ route('events.index') }}" class="py-1.5 text-sm text-gray-400 hover:text-gray-600">Clear</a>
+                        <a href="{{ route('events.index') }}" class="py-1.5 text-sm text-gray-400 hover:text-gray-600">Сбросить</a>
                     </div>
                 @endif
             </div>
@@ -185,7 +185,7 @@
 
     {{-- Stats --}}
     <div class="flex items-center justify-between mb-3">
-        <p class="text-sm text-gray-500">{{ number_format($events->total()) }} event(s) with alcohol > 0</p>
+        <p class="text-sm text-gray-500">Событий с алкоголем > 0: {{ number_format($events->total()) }}</p>
     </div>
 
     {{-- Table --}}
@@ -193,10 +193,10 @@
         <table class="min-w-full divide-y divide-gray-100">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Terminal</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Alcohol</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Время</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Терминал</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Алкоголь</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -230,9 +230,9 @@
                 @empty
                     <tr>
                         <td colspan="4" class="px-4 py-10 text-center text-sm text-gray-400">
-                            No events with alcohol found.
+                            События с алкоголем не найдены.
                             @if($hasFilters)
-                                <a href="{{ route('events.index') }}" class="text-indigo-500 hover:text-indigo-700 ml-1">Clear filters</a>
+                                <a href="{{ route('events.index') }}" class="text-indigo-500 hover:text-indigo-700 ml-1">Сбросить фильтры</a>
                             @endif
                         </td>
                     </tr>

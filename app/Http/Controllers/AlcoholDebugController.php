@@ -48,7 +48,7 @@ class AlcoholDebugController extends Controller
 
         session(["alcohol_debug_snapshot_{$employee->id}" => $this->captureState($employee)]);
 
-        return redirect()->route('alcohol.debug', $employee)->with('success', 'Skip reset — both DB and device flag cleared.');
+        return redirect()->route('alcohol.debug', $employee)->with('success', 'Пропуск сброшен — флаг очищен в БД и на устройстве.');
     }
 
     /**
@@ -64,14 +64,14 @@ class AlcoholDebugController extends Controller
         $terminal = $employee->alcoholEnabledTerminals()->first();
 
         if ($terminal === null) {
-            return redirect()->route('alcohol.debug', $employee)->with('success', "Name updated to \"{$employee->full_name}\" in DB, but no alcohol-enabled terminal is linked to push it to.");
+            return redirect()->route('alcohol.debug', $employee)->with('success', "Имя изменено на \"{$employee->full_name}\" в БД, но нет привязанного терминала с алкотестом для отправки.");
         }
 
         (new HikvisionService($terminal))->addEmployee($employee);
 
         session(["alcohol_debug_snapshot_{$employee->id}" => $this->captureState($employee)]);
 
-        return redirect()->route('alcohol.debug', $employee)->with('success', "Name updated to \"{$employee->full_name}\" and pushed to {$terminal->name}.");
+        return redirect()->route('alcohol.debug', $employee)->with('success', "Имя изменено на \"{$employee->full_name}\" и отправлено на {$terminal->name}.");
     }
 
     /**

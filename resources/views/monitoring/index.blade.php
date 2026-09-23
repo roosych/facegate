@@ -1,12 +1,12 @@
 <x-app-layout>
-    @section('subtitle', 'Sync runs, durations and outcomes')
-    @section('title', 'Monitoring')
+    @section('subtitle', 'Запуски синхронизации, длительность и результаты')
+    @section('title', 'Мониторинг')
 
     @php
         $kinds = [
             \App\Models\SyncRun::KIND_RUSGUARD  => 'RusGuard',
             \App\Models\SyncRun::KIND_HIKVISION => 'Hikvision',
-            \App\Models\SyncRun::KIND_ACCESS_POINT => 'Access point',
+            \App\Models\SyncRun::KIND_ACCESS_POINT => 'Точка доступа',
         ];
         $triggerStyles = [
             \App\Models\SyncRun::TRIGGER_SCHEDULE => 'bg-gray-100 text-gray-600',
@@ -19,7 +19,7 @@
     {{-- Integration health: the signals that go quiet without anything failing --}}
     <div class="bg-white rounded-lg shadow border border-gray-200 mb-6 overflow-hidden">
         <div class="px-5 py-3 border-b border-gray-100">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Integration health</h2>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Состояние интеграции</h2>
         </div>
 
         <div class="divide-y divide-gray-50">
@@ -29,16 +29,16 @@
                     RusGuard
                 </span>
                 <span class="text-sm text-gray-500">
-                    audit poll <span class="text-gray-900">{{ $health['rusguard']['audit_polled'] ?? 'never' }}</span>
+                    опрос аудита <span class="text-gray-900">{{ $health['rusguard']['audit_polled'] ?? 'никогда' }}</span>
                 </span>
                 <span class="text-sm text-gray-500">
-                    last full sync <span class="text-gray-900">{{ $health['rusguard']['last_sync'] ?? 'never' }}</span>
+                    последняя полная синхронизация <span class="text-gray-900">{{ $health['rusguard']['last_sync'] ?? 'никогда' }}</span>
                     @if($health['rusguard']['last_sync_duration'])
                         <span class="text-gray-400">({{ $health['rusguard']['last_sync_duration'] }})</span>
                     @endif
                 </span>
                 @if($health['rusguard']['audit_stale'])
-                    <span class="text-sm text-red-600">audit poller has not run in the last 5 minutes</span>
+                    <span class="text-sm text-red-600">опрос аудита не выполнялся последние 5 минут</span>
                 @endif
             </div>
 
@@ -49,19 +49,19 @@
                         {{ $terminal['name'] }}
                     </span>
                     <span class="text-sm text-gray-500">
-                        last push <span class="text-gray-900">{{ $terminal['last_push_at'] ?? 'never' }}</span>
+                        последняя отправка <span class="text-gray-900">{{ $terminal['last_push_at'] ?? 'никогда' }}</span>
                     </span>
                     <span class="text-sm text-gray-500">
-                        last event <span class="text-gray-900">{{ $terminal['last_event_at'] ?? 'never' }}</span>
+                        последнее событие <span class="text-gray-900">{{ $terminal['last_event_at'] ?? 'никогда' }}</span>
                     </span>
                     <span class="text-sm text-gray-500">
-                        last sync <span class="text-gray-900">{{ $terminal['last_sync_at'] ?? 'never' }}</span>
+                        последняя синхронизация <span class="text-gray-900">{{ $terminal['last_sync_at'] ?? 'никогда' }}</span>
                     </span>
                     <span class="text-sm text-gray-500">
-                        point <span class="{{ $terminal['access_point_stale'] ? 'text-red-600 font-medium' : 'text-gray-900' }}">{{ $terminal['access_point'] ?? 'not bound' }}</span>
+                        точка <span class="{{ $terminal['access_point_stale'] ? 'text-red-600 font-medium' : 'text-gray-900' }}">{{ $terminal['access_point'] ?? 'не привязана' }}</span>
                     </span>
                     @if($terminal['push_stale'])
-                        <span class="text-sm text-red-600">no push for over 5 minutes — events are only arriving via the 30-minute poll</span>
+                        <span class="text-sm text-red-600">нет отправки более 5 минут — события поступают только через 30-минутный опрос</span>
                     @endif
                 </div>
 
@@ -71,11 +71,11 @@
                          the wrong roster onto a physical turnstile. --}}
                     <div class="flex flex-wrap items-center gap-3 px-5 py-3 bg-red-50" x-data="{ pointId: '' }">
                         <span class="text-sm text-red-700">
-                            Access point is deactivated — this terminal is syncing against a roster
-                            RusGuard no longer maintains. Its people are frozen, not removed.
+                            Точка доступа деактивирована — этот терминал синхронизируется со списком,
+                            который RusGuard больше не поддерживает. Люди заморожены, а не удалены.
                         </span>
                         <select x-model="pointId" class="text-sm border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                            <option value="">— pick the current point —</option>
+                            <option value="">— выберите текущую точку —</option>
                             @foreach($accessPointOptions as $option)
                                 <option value="{{ $option->id }}">{{ $option->name }}</option>
                             @endforeach
@@ -88,7 +88,7 @@
                                         body: JSON.stringify({ access_point_id: Number(pointId) })
                                     }).then(() => window.location.reload())"
                             class="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed">
-                            Rebind
+                            Перепривязать
                         </button>
                     </div>
                 @endif
@@ -114,15 +114,15 @@
         }"
     >
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Queue</h2>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Очередь</h2>
             <span class="text-xs text-gray-400">
-                <span x-text="queue.reserved"></span> in progress ·
-                <span x-text="queue.pending.reduce((sum, row) => sum + row.count, 0)"></span> waiting
+                <span x-text="queue.reserved"></span> выполняется ·
+                <span x-text="queue.pending.reduce((sum, row) => sum + row.count, 0)"></span> в ожидании
             </span>
         </div>
 
         <template x-if="queue.pending.length === 0 && queue.failed.length === 0">
-            <div class="px-5 py-4 text-sm text-gray-400">Queue is empty.</div>
+            <div class="px-5 py-4 text-sm text-gray-400">Очередь пуста.</div>
         </template>
 
         <template x-for="row in queue.pending" :key="row.job">
@@ -130,14 +130,14 @@
                 <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
                 <span class="text-sm text-gray-900" x-text="row.job"></span>
                 <span class="text-sm text-gray-500">×<span x-text="row.count"></span></span>
-                <span class="ml-auto text-xs text-gray-400">queued <span x-text="row.waiting_since"></span></span>
+                <span class="ml-auto text-xs text-gray-400">в очереди с <span x-text="row.waiting_since"></span></span>
             </div>
         </template>
 
         <template x-if="queue.failed.length > 0">
             <div>
                 <div class="px-5 py-2 bg-red-50 text-xs font-semibold text-red-700 uppercase tracking-wide">
-                    Failed · <span x-text="queue.failed.length"></span>
+                    С ошибкой · <span x-text="queue.failed.length"></span>
                 </div>
                 <template x-for="job in queue.failed" :key="job.uuid">
                     <div class="flex items-start gap-3 px-5 py-3 border-b border-gray-50">
@@ -149,11 +149,11 @@
                         <div class="ml-auto flex gap-2 flex-shrink-0">
                             <form method="POST" :action="'{{ url('monitoring/failed-jobs') }}/' + job.uuid + '/retry'">
                                 @csrf
-                                <button type="submit" class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100">Retry</button>
+                                <button type="submit" class="px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 rounded hover:bg-indigo-100">Повторить</button>
                             </form>
                             <form method="POST" :action="'{{ url('monitoring/failed-jobs') }}/' + job.uuid + '/forget'">
                                 @csrf
-                                <button type="submit" class="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Forget</button>
+                                <button type="submit" class="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Забыть</button>
                             </form>
                         </div>
                     </div>
@@ -165,9 +165,9 @@
     {{-- People the sync gave up on --}}
     <div class="bg-white rounded-lg shadow border border-gray-200 mb-6 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Problems</h2>
+            <h2 class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Проблемы</h2>
             @if($problems['without_card'] > 0)
-                <span class="text-xs text-gray-500">{{ $problems['without_card'] }} active employees without a card</span>
+                <span class="text-xs text-gray-500">Активных сотрудников без карты: {{ $problems['without_card'] }}</span>
             @endif
         </div>
 
@@ -181,19 +181,19 @@
                         <form method="POST" action="{{ route('monitoring.face-problems.clear', $terminal['id']) }}">
                             @csrf
                             <button type="submit" class="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
-                                Retry all on next sync
+                                Повторить все при следующей синхронизации
                             </button>
                         </form>
                     @endif
                 </div>
 
                 @if($total === 0 && $terminal['alcohol_failed'] === 0)
-                    <p class="text-sm text-gray-400">Everyone linked to this terminal has a face and a card.</p>
+                    <p class="text-sm text-gray-400">У всех, привязанных к этому терминалу, есть фото и карта.</p>
                 @else
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                No photo in RusGuard · {{ count($terminal['no_photo']) }}
+                                Нет фото в RusGuard · {{ count($terminal['no_photo']) }}
                             </div>
                             @forelse($terminal['no_photo'] as $person)
                                 <div class="text-sm text-gray-600">
@@ -207,7 +207,7 @@
 
                         <div>
                             <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                Refused by the terminal · {{ count($terminal['refused']) }}
+                                Отклонено терминалом · {{ count($terminal['refused']) }}
                             </div>
                             @forelse($terminal['refused'] as $person)
                                 <div class="text-sm text-gray-600">
@@ -221,7 +221,7 @@
                     </div>
 
                     @if($terminal['alcohol_failed'] > 0)
-                        <p class="mt-3 text-sm text-amber-700">{{ $terminal['alcohol_failed'] }} alcohol skip flag(s) failed to write on the last sync.</p>
+                        <p class="mt-3 text-sm text-amber-700">Не удалось записать флаг пропуска алкотеста при последней синхронизации: {{ $terminal['alcohol_failed'] }}.</p>
                     @endif
                 @endif
             </div>
@@ -234,25 +234,25 @@
             <div class="bg-white rounded-lg shadow border border-gray-200 p-4">
                 <div class="flex items-baseline justify-between">
                     <span class="text-sm font-semibold text-gray-900">{{ $kinds[$row['kind']] ?? $row['kind'] }}</span>
-                    <span class="text-xs text-gray-400">24h</span>
+                    <span class="text-xs text-gray-400">24ч</span>
                 </div>
                 <div class="mt-2 flex items-baseline gap-2">
                     <span class="text-2xl font-semibold text-gray-900">{{ $row['runs'] }}</span>
-                    <span class="text-sm text-gray-500">runs</span>
+                    <span class="text-sm text-gray-500">запусков</span>
                     @if($row['failed'] > 0)
                         <span class="ml-auto inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">
-                            {{ $row['failed'] }} failed
+                            ошибок: {{ $row['failed'] }}
                         </span>
                     @endif
                 </div>
                 <div class="mt-1 text-xs text-gray-500">
-                    avg {{ \App\Models\SyncRun::formatDuration($row['avg_ms']) ?? '—' }}
-                    · max {{ \App\Models\SyncRun::formatDuration($row['max_ms']) ?? '—' }}
+                    средн. {{ \App\Models\SyncRun::formatDuration($row['avg_ms']) ?? '—' }}
+                    · макс. {{ \App\Models\SyncRun::formatDuration($row['max_ms']) ?? '—' }}
                 </div>
             </div>
         @empty
             <div class="sm:col-span-2 lg:col-span-3 bg-white rounded-lg shadow border border-gray-200 p-4 text-sm text-gray-400">
-                No sync runs in the last 24 hours.
+                Запусков синхронизации за последние 24 часа не было.
             </div>
         @endforelse
     </div>
@@ -261,7 +261,7 @@
     <div class="flex items-center gap-2 mb-4">
         <a href="{{ route('monitoring.index') }}"
            class="px-3 py-1 rounded-md text-sm font-medium {{ $kind === '' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100' }}">
-            All
+            Все
         </a>
         @foreach($kinds as $value => $label)
             <a href="{{ route('monitoring.index', ['kind' => $value]) }}"
@@ -269,19 +269,19 @@
                 {{ $label }}
             </a>
         @endforeach
-        <span class="ml-auto text-sm text-gray-500">{{ $runs->total() }} runs</span>
+        <span class="ml-auto text-sm text-gray-500">Запусков: {{ $runs->total() }}</span>
     </div>
 
     <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         <table class="min-w-full divide-y divide-gray-100">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Started</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">What</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Trigger</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Duration</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Result</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Начало</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Что</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Источник</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Длительность</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Результат</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -300,11 +300,11 @@
                         </td>
                         <td class="px-4 py-3">
                             @if($run->status === \App\Models\SyncRun::STATUS_SUCCESS)
-                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">success</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">успех</span>
                             @elseif($run->status === \App\Models\SyncRun::STATUS_FAILED)
-                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">failed</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">ошибка</span>
                             @else
-                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">running</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">выполняется</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{{ $run->durationLabel() ?? '—' }}</td>
@@ -326,7 +326,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">No sync runs recorded yet.</td>
+                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-400">Запусков синхронизации пока не зафиксировано.</td>
                     </tr>
                 @endforelse
             </tbody>

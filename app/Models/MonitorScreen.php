@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * A named, persistent grouping of turnstiles for one physical monitor — e.g. "Вход в офис"
- * showing two turnstiles side by side. Exists so a kiosk's browser can be pointed at one stable
- * signed URL (see MonitorController::showScreen()) that keeps working after the admin adds,
- * removes or reorders the turnstiles it shows, instead of baking a fixed list of access point
- * ids into the URL itself.
+ * showing two turnstiles side by side. Exists so the browser on a monitor screen stationed at a
+ * turnstile location (a guard post, reception desk, etc.) can be pointed at one stable signed URL
+ * (see MonitorController::showScreen()) that keeps working after the admin adds, removes or
+ * reorders the turnstiles it shows, instead of baking a fixed list of access point ids into the
+ * URL itself.
  */
 #[Fillable(['name'])]
 class MonitorScreen extends Model

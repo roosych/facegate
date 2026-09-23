@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncLog;
 use App\Services\HikvisionSyncService;
+use App\Services\RusGuard\RusGuardHealth;
 use App\Services\SyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -40,7 +41,9 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
-        return view('dashboard', compact('stats', 'recentEvents', 'recentSyncs'));
+        $rusGuardHealth = RusGuardHealth::snapshot();
+
+        return view('dashboard', compact('stats', 'recentEvents', 'recentSyncs', 'rusGuardHealth'));
     }
 
     public function status(): JsonResponse
@@ -81,6 +84,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'rusguard_sync' => $rusGuardSync,
+            'rusguard_db' => RusGuardHealth::snapshot(),
             'terminals' => $terminals,
             'queue' => [
                 'pending' => $jobsByType->sum(),

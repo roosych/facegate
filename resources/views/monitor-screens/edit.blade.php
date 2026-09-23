@@ -1,12 +1,12 @@
 <x-app-layout>
-    @section('subtitle', 'Edit monitor screen')
+    @section('subtitle', 'Изменение экрана мониторинга')
     @section('title', $monitorScreen->name)
 
     <div class="max-w-3xl space-y-5">
         <div class="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
             <div class="text-sm text-indigo-700 min-w-0">
                 <span class="font-medium">Постоянная ссылка на этот экран</span>
-                <span class="block text-xs text-indigo-500 mt-0.5">Не меняется, даже если поменять состав точек ниже — можно один раз открыть на киоске.</span>
+                <span class="block text-xs text-indigo-500 mt-0.5">Не меняется, даже если поменять состав точек ниже — можно один раз открыть на мониторе поста.</span>
             </div>
             <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('monitor.show-screen', ['monitorScreen' => $monitorScreen]) }}" target="_blank"
                 class="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors">

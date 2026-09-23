@@ -51,7 +51,7 @@ class HikvisionTerminalController extends Controller
 
         HikvisionTerminal::create($validated);
 
-        return redirect()->route('hikvision.index')->with('success', 'Terminal created.');
+        return redirect()->route('hikvision.index')->with('success', 'Терминал создан.');
     }
 
     public function edit(HikvisionTerminal $hikvision): View
@@ -85,14 +85,14 @@ class HikvisionTerminalController extends Controller
 
         $hikvision->update($validated);
 
-        return redirect()->route('hikvision.index')->with('success', 'Terminal updated.');
+        return redirect()->route('hikvision.index')->with('success', 'Терминал обновлён.');
     }
 
     public function destroy(HikvisionTerminal $hikvision): RedirectResponse
     {
         $hikvision->delete();
 
-        return redirect()->route('hikvision.index')->with('success', 'Terminal deleted.');
+        return redirect()->route('hikvision.index')->with('success', 'Терминал удалён.');
     }
 
     public function employees(HikvisionTerminal $hikvision): JsonResponse
@@ -174,11 +174,11 @@ class HikvisionTerminalController extends Controller
             ->first();
 
         if (! $employee) {
-            return response()->json(['error' => 'Employee not found in local database'], 404);
+            return response()->json(['error' => 'Сотрудник не найден в локальной базе'], 404);
         }
 
         if (! $employee->is_active) {
-            return response()->json(['error' => 'Employee is no longer active in RusGuard — refusing to re-push access'], 422);
+            return response()->json(['error' => 'Сотрудник больше не активен в RusGuard — повторная отправка доступа отклонена'], 422);
         }
 
         try {

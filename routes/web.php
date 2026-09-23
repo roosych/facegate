@@ -19,21 +19,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
-// No login on a kiosk screen mounted at a turnstile — a signed URL is the only guard.
-// The screen routes ({monitorScreen}) are the supported path (managed at /monitor-screens): a
-// stable URL that keeps working after the admin changes which turnstiles it shows. The
-// {accessPoints} routes (one or more AccessPoint ids joined by commas, e.g. "44,45") are a raw
-// one-off alternative that bakes the list into the URL itself. Both render the same view — see
-// MonitorController for how each turnstile's own in/out terminals are merged into one block.
+// No login on a monitor screen stationed at a turnstile location (guard post, reception, etc.)
+// — a signed URL is the only guard. A stable URL keeps working after the admin changes which
+// turnstiles a screen shows — see MonitorController for how each turnstile's own in/out
+// terminals are merged into one block.
 Route::middleware('signed')->group(function () {
     Route::get('/monitor/screen/{monitorScreen}', [MonitorController::class, 'showScreen'])->name('monitor.show-screen');
     Route::get('/monitor/screen/{monitorScreen}/status', [MonitorController::class, 'statusScreen'])->name('monitor.status-screen');
-    Route::get('/monitor/{accessPoints}', [MonitorController::class, 'show'])
-        ->where('accessPoints', '[0-9]+(,[0-9]+)*')
-        ->name('monitor.show');
-    Route::get('/monitor/{accessPoints}/status', [MonitorController::class, 'status'])
-        ->where('accessPoints', '[0-9]+(,[0-9]+)*')
-        ->name('monitor.status');
     Route::get('/monitor/{accessPoint}/employees/{employee}/photo', [MonitorController::class, 'photo'])->name('monitor.photo');
 });
 

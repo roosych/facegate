@@ -1,6 +1,6 @@
 <x-app-layout>
-    @section('subtitle', 'Create a new monitor screen')
-    @section('title', 'New Monitor Screen')
+    @section('subtitle', 'Создание нового экрана мониторинга')
+    @section('title', 'Новый экран мониторинга')
 
     <div class="max-w-3xl">
         <form method="POST" action="{{ route('monitor-screens.store') }}" class="space-y-5">

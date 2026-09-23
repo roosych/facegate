@@ -83,6 +83,6 @@ class EmployeeControllerTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('employees.show', $employee))
             ->assertOk()
-            ->assertSee('Recent Events');
+            ->assertSee('Последние события');
     }
 }

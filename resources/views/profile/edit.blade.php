@@ -1,6 +1,6 @@
 <x-app-layout>
-    @section('subtitle', 'Your account settings')
-    @section('title', 'Profile')
+    @section('subtitle', 'Настройки вашей учётной записи')
+    @section('title', 'Профиль')
 
     <div class="space-y-5 max-w-2xl">
         <div class="bg-white rounded-lg shadow border border-gray-200 p-6">

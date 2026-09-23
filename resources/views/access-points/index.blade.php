@@ -1,6 +1,6 @@
 <x-app-layout>
-    @section('subtitle', 'Manage access points')
-    @section('title', 'Access Points')
+    @section('subtitle', 'Управление точками доступа')
+    @section('title', 'Точки доступа')
 
     <div
         x-data="{
@@ -77,7 +77,7 @@
                         const data = await res.json();
                         if (data.error) { this.error = data.error; }
                         else { this.local = data.local; this.rusguard = data.rusguard; this.missing = data.missing; this.extra = data.extra; this.checked = true; }
-                    } catch { this.error = 'Request failed'; }
+                    } catch { this.error = 'Запрос не выполнен'; }
                     this.checking = false;
                 },
                 async addPoint(driverId, name, deviceType, index) {
@@ -117,39 +117,39 @@
                     type="search"
                     name="search"
                     value="{{ $search }}"
-                    placeholder="Search access points..."
+                    placeholder="Поиск точек доступа..."
                     class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-64 focus:outline-none focus:ring-2 focus:ring-indigo-400"
                 >
-                <button type="submit" class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700">Search</button>
+                <button type="submit" class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700">Найти</button>
                 @if($search !== '')
-                    <a href="{{ route('access-points.index') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:border-gray-400">Clear</a>
+                    <a href="{{ route('access-points.index') }}" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 border border-gray-300 rounded-lg px-3 py-1.5 hover:border-gray-400">Сбросить</a>
                 @endif
             </form>
 
             <div class="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-5 py-4 mb-3">
                 <div class="flex items-center gap-3">
-                    <p class="text-sm text-gray-500">{{ $accessPoints->total() }} access points</p>
+                    <p class="text-sm text-gray-500">{{ $accessPoints->total() }} точек доступа</p>
 
                     {{-- Check points button --}}
                     <button type="button" @click="check()" :disabled="checking"
                         class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors disabled:opacity-50 flex items-center gap-1.5">
-                        <svg x-show="checking" style="width:12px;height:12px;animation:rg-spin 0.75s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24">
+                        <svg x-show="checking" x-cloak style="width:12px;height:12px;animation:rg-spin 0.75s linear infinite;flex-shrink:0" fill="none" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="10" stroke="#c7d2fe" stroke-width="3"/>
                             <path d="M12 2a10 10 0 0 1 10 10" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
                         </svg>
-                        <span x-show="!checking">Check Points</span>
-                        <span x-show="checking">Checking...</span>
+                        <span x-show="!checking">Проверить точки</span>
+                        <span x-show="checking" x-cloak>Проверка...</span>
                     </button>
 
                     {{-- Summary badge --}}
                     <template x-if="checked && !hasDiff">
                         <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 rounded-full">
-                            In sync (<span x-text="rusguard"></span> points)
+                            Синхронизировано (<span x-text="rusguard"></span> точек)
                         </span>
                     </template>
                     <template x-if="checked && hasDiff">
                         <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 rounded-full"
-                            x-text="'Local ' + local + ' / RusGuard ' + rusguard"></span>
+                            x-text="'Локально ' + local + ' / RusGuard ' + rusguard"></span>
                     </template>
                     <template x-if="error">
                         <span class="text-xs text-red-500" x-text="error"></span>
@@ -173,7 +173,7 @@
                     :class="isActive ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-700'"
                     style="background-color:#4f46e5;color:#fff;padding:0.5rem 1.25rem;font-size:0.875rem;font-weight:600;border-radius:0.5rem;border:none;cursor:pointer;transition:background-color 0.15s"
                 >
-                    Sync All
+                    Синхронизировать всё
                 </button>
             </div>
 
@@ -183,7 +183,7 @@
                     <template x-if="missing.length > 0">
                         <div>
                             <div class="px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between">
-                                <span class="text-xs font-semibold text-amber-700 uppercase tracking-wide">In RusGuard but not local (<span x-text="missing.length"></span>)</span>
+                                <span class="text-xs font-semibold text-amber-700 uppercase tracking-wide">Есть в RusGuard, но нет локально (<span x-text="missing.length"></span>)</span>
                                 <button type="button"
                                     @click="addAll()"
                                     :disabled="addingAll"
@@ -192,8 +192,8 @@
                                         <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.4)" stroke-width="3"/>
                                         <path d="M12 2a10 10 0 0 1 10 10" stroke="white" stroke-width="3" stroke-linecap="round"/>
                                     </svg>
-                                    <span x-show="!addingAll">Save all to local</span>
-                                    <span x-show="addingAll">Saving <span x-text="missing.length"></span> left...</span>
+                                    <span x-show="!addingAll">Сохранить все локально</span>
+                                    <span x-show="addingAll">Осталось сохранить <span x-text="missing.length"></span>...</span>
                                 </button>
                             </div>
                             <template x-for="(point, i) in missing" :key="point.driverId">
@@ -205,7 +205,7 @@
                                                 <span class="inline-flex px-1.5 py-0.5 text-xs bg-gray-100 text-gray-500 rounded" x-text="point.type"></span>
                                             </template>
                                             <template x-if="point.employeeCount > 0">
-                                                <span class="inline-flex px-1.5 py-0.5 text-xs bg-indigo-50 text-indigo-600 rounded" x-text="point.employeeCount + ' emp.'"></span>
+                                                <span class="inline-flex px-1.5 py-0.5 text-xs bg-indigo-50 text-indigo-600 rounded" x-text="point.employeeCount + ' сотр.'"></span>
                                             </template>
                                         </div>
                                         <span class="text-xs text-gray-400 font-mono" x-text="point.driverId"></span>
@@ -214,8 +214,8 @@
                                         @click="addPoint(point.driverId, point.name, point.type, i)"
                                         :disabled="syncing[i]"
                                         class="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors disabled:opacity-50">
-                                        <span x-show="!syncing[i]">Add to local</span>
-                                        <span x-show="syncing[i]">Adding...</span>
+                                        <span x-show="!syncing[i]">Добавить локально</span>
+                                        <span x-show="syncing[i]">Добавление...</span>
                                     </button>
                                 </div>
                             </template>
@@ -224,7 +224,7 @@
                     <template x-if="extra.length > 0">
                         <div>
                             <div class="px-5 py-2 bg-gray-50 border-b border-gray-100">
-                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">In local but not in RusGuard (<span x-text="extra.length"></span>)</span>
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Есть локально, но нет в RusGuard (<span x-text="extra.length"></span>)</span>
                             </div>
                             <template x-for="point in extra" :key="point.id">
                                 <div class="flex items-center px-5 py-3 gap-3 border-b border-gray-100 last:border-0">
@@ -232,7 +232,7 @@
                                         <span class="text-sm font-medium text-gray-500" x-text="point.rusguard_access_point_name || point.name"></span>
                                         <span class="block text-xs text-gray-400 font-mono" x-text="point.rusguard_access_point_id"></span>
                                     </div>
-                                    <span class="text-xs text-gray-400">Deleted in RusGuard</span>
+                                    <span class="text-xs text-gray-400">Удалено в RusGuard</span>
                                 </div>
                             </template>
                         </div>
@@ -242,12 +242,12 @@
         </div>
 
         {{-- Progress block --}}
-        <div x-show="status !== 'idle'" x-transition style="margin-bottom:1rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem 1.5rem">
+        <div x-show="status !== 'idle'" x-cloak x-transition style="margin-bottom:1rem;background:#fff;border:1px solid #e5e7eb;border-radius:0.5rem;padding:1.25rem 1.5rem">
 
             {{-- Pending --}}
             <div x-show="status === 'pending'" style="display:flex;align-items:center;gap:0.75rem">
                 <div style="width:18px;height:18px;border:2px solid #e0e7ff;border-top-color:#4f46e5;border-radius:50%;animation:rg-spin 0.75s linear infinite;flex-shrink:0"></div>
-                <span style="font-size:0.875rem;color:#6b7280">Waiting for worker...</span>
+                <span style="font-size:0.875rem;color:#6b7280">Ожидание воркера...</span>
             </div>
 
             {{-- Running --}}
@@ -255,9 +255,9 @@
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.625rem">
                     <div style="display:flex;align-items:center;gap:0.5rem">
                         <div style="width:16px;height:16px;border:2px solid #e0e7ff;border-top-color:#4f46e5;border-radius:50%;animation:rg-spin 0.75s linear infinite;flex-shrink:0"></div>
-                        <span style="font-size:0.875rem;font-weight:500;color:#374151">Syncing...</span>
+                        <span style="font-size:0.875rem;font-weight:500;color:#374151">Синхронизация...</span>
                     </div>
-                    <span x-show="total > 1" style="font-size:0.875rem;color:#6b7280" x-text="done + ' / ' + total + ' access points'"></span>
+                    <span x-show="total > 1" style="font-size:0.875rem;color:#6b7280" x-text="done + ' / ' + total + ' точек доступа'"></span>
                 </div>
 
                 <div style="background:#f3f4f6;border-radius:9999px;height:10px;overflow:hidden;margin-bottom:0.5rem">
@@ -276,9 +276,9 @@
                     <svg style="width:18px;height:18px;color:#16a34a;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
                     </svg>
-                    <span style="font-size:0.875rem;font-weight:500;color:#16a34a" x-text="'Done — ' + synced + ' employees synced' + (errors > 0 ? ', ' + errors + ' errors' : '')"></span>
+                    <span style="font-size:0.875rem;font-weight:500;color:#16a34a" x-text="'Готово — синхронизировано сотрудников: ' + synced + (errors > 0 ? ', ошибок: ' + errors : '')"></span>
                 </div>
-                <span style="font-size:0.75rem;color:#9ca3af">Updating page...</span>
+                <span style="font-size:0.75rem;color:#9ca3af">Обновление страницы...</span>
             </div>
 
             {{-- Failed --}}
@@ -287,9 +287,9 @@
                     <svg style="width:18px;height:18px;color:#dc2626;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
-                    <span style="font-size:0.875rem;font-weight:500;color:#dc2626">Sync failed. Try again.</span>
+                    <span style="font-size:0.875rem;font-weight:500;color:#dc2626">Синхронизация не удалась. Попробуйте снова.</span>
                 </div>
-                <button @click="status = 'idle'" style="font-size:0.75rem;color:#9ca3af;cursor:pointer;background:none;border:none;padding:0">Dismiss</button>
+                <button @click="status = 'idle'" style="font-size:0.75rem;color:#9ca3af;cursor:pointer;background:none;border:none;padding:0">Скрыть</button>
             </div>
 
         </div>
@@ -375,7 +375,7 @@
                             <span class="text-xs text-gray-400 font-mono">{{ $accessPoint->rusguard_access_point_id }}</span>
                         </div>
                         <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-indigo-50 text-indigo-600 rounded-full">
-                            {{ $accessPoint->employees_count }} employees
+                            {{ $accessPoint->employees_count }} сотрудников
                         </span>
                         @if($accessPoint->hikvisionTerminal)
                             <span class="inline-flex flex-shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 rounded-full">
@@ -384,7 +384,7 @@
                             </span>
                         @endif
                         @unless($accessPoint->is_active)
-                            <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">Inactive</span>
+                            <span class="inline-flex flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded-full">Неактивна</span>
                         @endunless
                     </div>
 
@@ -394,44 +394,40 @@
                         <button type="button"
                             @click="openRgModal('{{ route('access-points.rusguard-employees', $accessPoint) }}')"
                             class="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md transition-colors">
-                            Fetch from RusGuard
+                            Загрузить из RusGuard
                         </button>
 
                         @if($accessPoint->hikvisionTerminal)
                             <button type="button"
                                 @click="startSync('{{ route('hikvision.sync.terminal', $accessPoint->hikvisionTerminal) }}', '{{ route('hikvision.sync.status', $accessPoint->hikvisionTerminal) }}')"
                                 class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                Push
+                                Отправить
                             </button>
-                            <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('monitor.show', ['accessPoints' => (string) $accessPoint->id]) }}" target="_blank"
-                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                Open Monitor
-                            </a>
                         @elseif($freeTerminals->isNotEmpty())
                             <button type="button" @click="modalOpen = true"
                                 class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                Link terminal
+                                Привязать терминал
                             </button>
                         @endif
                     </div>
                 </div>
 
                 {{-- Push progress --}}
-                <div x-show="syncStatus !== null" x-transition class="px-5 pb-3 -mt-1">
+                <div x-show="syncStatus !== null" x-cloak x-transition class="px-5 pb-3 -mt-1">
                     <div x-show="['queued','pending','running'].includes(syncStatus?.status)" class="flex items-center gap-2 text-xs text-indigo-600">
                         <svg class="animate-spin h-3 w-3 flex-shrink-0" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                         </svg>
-                        <span x-text="syncStatus?.status === 'queued' ? 'Queued...' : 'Pushing ' + (syncStatus?.emp_done ?? syncStatus?.done ?? 0) + '/' + (syncStatus?.emp_total ?? syncStatus?.total ?? '?') + ' · ' + (syncStatus?.synced ?? 0) + ' done'"></span>
+                        <span x-text="syncStatus?.status === 'queued' ? 'В очереди...' : 'Отправка ' + (syncStatus?.emp_done ?? syncStatus?.done ?? 0) + '/' + (syncStatus?.emp_total ?? syncStatus?.total ?? '?') + ' · выполнено ' + (syncStatus?.synced ?? 0)"></span>
                     </div>
                     <div x-show="syncStatus?.status === 'done'" class="flex items-center gap-1.5 text-xs text-green-600">
                         <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
-                        <span x-text="'Done — ' + (syncStatus?.synced ?? 0) + ' synced' + (syncStatus?.errors > 0 ? ', ' + syncStatus.errors + ' errors' : '')"></span>
+                        <span x-text="'Готово — синхронизировано ' + (syncStatus?.synced ?? 0) + (syncStatus?.errors > 0 ? ', ошибок ' + syncStatus.errors : '')"></span>
                     </div>
                     <div x-show="syncStatus?.status === 'failed'" class="flex items-center gap-1.5 text-xs text-red-600">
                         <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        Failed
+                        Ошибка
                     </div>
                 </div>
 
@@ -451,7 +447,7 @@
                     >
                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
                             <div>
-                                <h3 class="text-sm font-semibold text-gray-900">Link terminal</h3>
+                                <h3 class="text-sm font-semibold text-gray-900">Привязать терминал</h3>
                                 <p class="text-xs text-gray-400 mt-0.5">{{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}</p>
                             </div>
                             <button @click="modalOpen = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -505,11 +501,11 @@
                             <div>
                                 <h3 class="text-sm font-semibold text-gray-900">{{ $accessPoint->rusguard_access_point_name ?: $accessPoint->name }}</h3>
                                 <p class="text-xs text-gray-400 mt-0.5" x-show="!rgLoading && rgEmployees.length > 0">
-                                    <span x-text="rgEmployees.length + ' people'"></span>
+                                    <span x-text="rgEmployees.length + ' чел.'"></span>
                                     <span
                                         x-show="rgEmployees.filter(e => !e.card_keys || e.card_keys.length === 0).length > 0"
                                         class="ml-2 font-medium text-red-500"
-                                        x-text="rgEmployees.filter(e => !e.card_keys || e.card_keys.length === 0).length + ' without card'"
+                                        x-text="rgEmployees.filter(e => !e.card_keys || e.card_keys.length === 0).length + ' без карты'"
                                     ></span>
                                 </p>
                             </div>
@@ -517,7 +513,7 @@
                                 <input
                                     x-model="rgSearch"
                                     type="text"
-                                    placeholder="Search..."
+                                    placeholder="Поиск..."
                                     class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-40 focus:outline-none focus:ring-1 focus:ring-indigo-400"
                                 />
                                 <button @click="rgModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -535,7 +531,7 @@
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
                                 </svg>
-                                Loading from RusGuard...
+                                Загрузка из RusGuard...
                             </div>
 
                             {{-- Error --}}
@@ -543,7 +539,7 @@
 
                             {{-- Empty --}}
                             <div x-show="!rgLoading && !rgError && filteredRgEmployees.length === 0" class="text-sm text-gray-400 py-4 text-center">
-                                No employees found
+                                Сотрудники не найдены
                             </div>
 
                             {{-- List --}}
@@ -557,7 +553,7 @@
                                                 <span class="text-xs font-mono text-indigo-400" x-text="emp.card_keys.join(', ')"></span>
                                             </template>
                                             <template x-if="!emp.card_keys || emp.card_keys.length === 0">
-                                                <span class="text-xs font-medium text-amber-500">No card</span>
+                                                <span class="text-xs font-medium text-amber-500">Нет карты</span>
                                             </template>
                                         </div>
                                     </li>
@@ -569,14 +565,14 @@
                             <button type="button"
                                 @click="rgModal = false; startSync('{{ route('sync.access-point', $accessPoint) }}', '{{ route('sync.access-point.status', $accessPoint) }}')"
                                 class="w-full px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
-                                Save to local DB
+                                Сохранить в локальную БД
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {{-- Employee list --}}
-                <div x-show="expanded" x-transition class="border-t border-gray-100 px-5 py-4">
+                <div x-show="expanded" x-cloak x-transition class="border-t border-gray-100 px-5 py-4">
                     @if($accessPoint->employees->isNotEmpty())
                         <ul class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-1.5">
                             @foreach($accessPoint->employees as $employee)
@@ -589,18 +585,18 @@
                             @endforeach
                         </ul>
                     @else
-                        <p class="text-sm text-gray-400">No employees synced yet. Press <strong>Sync</strong> to load from RusGuard.</p>
+                        <p class="text-sm text-gray-400">Сотрудники ещё не синхронизированы. Нажмите <strong>«Отправить»</strong>, чтобы загрузить из RusGuard.</p>
                     @endif
                 </div>
 
             </div>
         @empty
             <div class="bg-white rounded-lg border border-gray-200 px-4 py-12 text-center">
-                <p class="text-sm text-gray-500 mb-4">No data yet. Press <strong>Sync All</strong> to load access points and employees from RusGuard.</p>
+                <p class="text-sm text-gray-500 mb-4">Пока нет данных. Нажмите <strong>«Синхронизировать всё»</strong>, чтобы загрузить точки доступа и сотрудников из RusGuard.</p>
                 <form method="POST" action="{{ route('sync.all') }}">
                     @csrf
                     <button type="submit" class="px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
-                        Sync All
+                        Синхронизировать всё
                     </button>
                 </form>
             </div>

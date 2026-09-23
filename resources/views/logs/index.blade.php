@@ -1,20 +1,20 @@
 <x-app-layout>
-    @section('subtitle', 'RusGuard sync history')
-    @section('title', 'Sync Logs')
+    @section('subtitle', 'История синхронизации RusGuard')
+    @section('title', 'Журнал синхронизации')
 
     <div class="flex items-center justify-between mb-5">
-        <p class="text-sm text-gray-500">{{ $logs->total() }} records</p>
+        <p class="text-sm text-gray-500">Записей: {{ $logs->total() }}</p>
     </div>
 
     <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         <table class="min-w-full divide-y divide-gray-100">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Message</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Время</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Действие</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Сообщение</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -35,9 +35,9 @@
                         </td>
                         <td class="px-4 py-3">
                             @if($log->status === 'success')
-                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">success</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">успех</span>
                             @elseif($log->status === 'error')
-                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">error</span>
+                                <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">ошибка</span>
                             @else
                                 <span class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">{{ $log->status }}</span>
                             @endif
@@ -46,7 +46,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">No sync logs yet.</td>
+                        <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-400">Записей синхронизации пока нет.</td>
                     </tr>
                 @endforelse
             </tbody>

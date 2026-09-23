@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>{{ $accessPoints->pluck('name')->implode(' / ') }} — Monitor</title>
+        <title>{{ $title }} — Monitor</title>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,12 +155,31 @@
             </div>
         </header>
 
+        {{--
+            Always exactly one row, however many turnstiles there are (1–4 in practice) and
+            however narrow the window gets — never wrapping into a second row of leftovers.
+            Tailwind's build scans this file's literal text for class names, so the match below
+            spells out each grid-cols-N class rather than interpolating the number into one —
+            a computed "grid-cols-{{ $n }}" string wouldn't be found by the scanner and so
+            wouldn't make it into the compiled CSS.
+        --}}
+        @php
+            $columns = match(min($accessPoints->count(), 4)) {
+                0, 1 => 'grid-cols-1',
+                2 => 'grid-cols-2',
+                3 => 'grid-cols-3',
+                default => 'grid-cols-4',
+            };
+        @endphp
         <main class="w-full pt-20 min-h-screen bg-[#f9f9f9] flex flex-col justify-center">
-            <div class="w-full max-w-7xl mx-auto px-12 py-20">
-                <div class="grid grid-cols-1 {{ $accessPoints->count() >= 2 ? 'md:grid-cols-2' : '' }} items-stretch gap-8">
+            <div class="w-full max-w-7xl mx-auto px-4 sm:px-8 md:px-12 py-20">
+                <div class="grid {{ $columns }} items-stretch gap-4 sm:gap-6 md:gap-8">
                     @forelse($accessPoints as $accessPoint)
+                        {{-- A single turnstile still gets its own row, but at the same width a
+                             card would have next to a neighbour, not stretched across the whole
+                             container. --}}
                         <div
-                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative"
+                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative {{ $accessPoints->count() === 1 ? 'mx-auto w-full max-w-[calc(50%-1rem)]' : '' }}"
                             :class="blockClasses({{ $accessPoint->id }})"
                         >
                             {{-- Small label above the header row — the reference this layout is based on
