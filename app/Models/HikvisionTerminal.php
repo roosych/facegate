@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats', 'last_push_at'])]
+#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'direction', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats', 'last_push_at'])]
 class HikvisionTerminal extends Model
 {
     use HasFactory;
@@ -16,6 +16,12 @@ class HikvisionTerminal extends Model
     public function accessPoint(): BelongsTo
     {
         return $this->belongsTo(AccessPoint::class, 'access_point_id');
+    }
+
+    /** Cache key holding the latest push event for this terminal, for the live monitor screen. */
+    public function monitorCacheKey(): string
+    {
+        return 'monitor_terminal_event_'.$this->id;
     }
 
     public function syncLogs(): HasMany

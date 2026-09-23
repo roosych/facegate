@@ -44,6 +44,7 @@ class HikvisionTerminalController extends Controller
             'password' => ['required', 'string', 'max:255'],
             'protocol' => ['required', 'in:http,https'],
             'location' => ['nullable', 'string', 'max:255'],
+            'direction' => ['nullable', 'in:in,out'],
             'is_active' => ['boolean'],
             'access_point_id' => ['nullable', 'integer', 'exists:access_points,id'],
         ]);
@@ -72,6 +73,7 @@ class HikvisionTerminalController extends Controller
             'password' => ['nullable', 'string', 'max:255'],
             'protocol' => ['required', 'in:http,https'],
             'location' => ['nullable', 'string', 'max:255'],
+            'direction' => ['nullable', 'in:in,out'],
             'is_active' => ['boolean'],
             'access_point_id' => ['nullable', 'integer', 'exists:access_points,id'],
         ]);

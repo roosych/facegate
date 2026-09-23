@@ -24,6 +24,11 @@ class AccessPoint extends Model
         return $this->hasOne(HikvisionTerminal::class, 'access_point_id');
     }
 
+    public function hikvisionTerminals(): HasMany
+    {
+        return $this->hasMany(HikvisionTerminal::class, 'access_point_id');
+    }
+
     public function accessEvents(): HasMany
     {
         return $this->hasMany(AccessEvent::class, 'access_point_id');

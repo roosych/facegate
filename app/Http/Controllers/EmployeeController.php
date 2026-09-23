@@ -41,11 +41,9 @@ class EmployeeController extends Controller
 
     public function photo(Employee $employee): BinaryFileResponse
     {
-        $path = $employee->photo_path
-            ? storage_path('app/'.$employee->photo_path)
-            : null;
+        $path = $employee->photoAbsolutePath();
 
-        if ($path === null || ! file_exists($path)) {
+        if ($path === null) {
             abort(404);
         }
 

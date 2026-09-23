@@ -45,6 +45,14 @@ class Employee extends Model
         return trim(implode(' ', array_filter([$this->last_name, $this->first_name, $this->middle_name])));
     }
 
+    /** Absolute path to the stored photo file, or null if there isn't one on disk. */
+    public function photoAbsolutePath(): ?string
+    {
+        $path = $this->photo_path ? storage_path('app/'.$this->photo_path) : null;
+
+        return $path !== null && file_exists($path) ? $path : null;
+    }
+
     /** Whether the employee is within the post-alcohol-test grace period (test not required right now). */
     public function isAlcoholSkipActive(): bool
     {

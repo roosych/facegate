@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Services\HikvisionEventIngestService;
 use App\Services\RusGuard\RusGuardDatabaseService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -67,9 +70,42 @@ class HikvisionEventWebhookController extends Controller
                 : [];
 
             $ingestService->ingest($terminal, $eventData, $alcoholRequired);
+            $this->cacheForMonitor($terminal, $eventData, $ingestService->terminalEventTime($terminal, $eventData));
         }
 
         return response('OK', 200);
+    }
+
+    /**
+     * Caches the latest identified pass for the live monitor screen, independent of
+     * HikvisionEventIngestService::ingest() — which only persists events carrying an alcohol
+     * reading. The monitor needs every pass (with or without alcohol data), but that's a
+     * display concern, not a reason to change what ingest() considers worth storing in
+     * access_events, so this duplicates its tiny employee lookup rather than depending on it.
+     *
+     * @param  array<string, mixed>  $eventData
+     */
+    private function cacheForMonitor(HikvisionTerminal $terminal, array $eventData, Carbon $eventTime): void
+    {
+        if (empty($eventData['employeeNoString']) && empty($eventData['cardNo'])) {
+            return;
+        }
+
+        $empCode = isset($eventData['employeeNoString']) ? (int) $eventData['employeeNoString'] : null;
+        $employee = $empCode !== null ? Employee::where('emp_code', $empCode)->first() : null;
+        $alcoholInfo = $eventData['alcoholDetectionInfo'] ?? null;
+
+        Cache::put($terminal->monitorCacheKey(), [
+            'employee_id' => $employee?->id,
+            'employee_name' => $employee?->full_name,
+            'emp_code' => $empCode,
+            'position' => $employee?->position,
+            'department' => $employee?->department,
+            'event_time' => $eventTime->toIso8601String(),
+            'alcohol_tested' => $alcoholInfo !== null,
+            'alcohol_passed' => $alcoholInfo !== null ? ($alcoholInfo['result'] ?? null) === 'normal' : null,
+            'alcohol_concentration' => $alcoholInfo['concentrationInfo']['concentrationValue'] ?? null,
+        ], now()->addDay());
     }
 
     /**

@@ -103,7 +103,7 @@ class HikvisionEventIngestService
      *
      * @param  array<string, mixed>  $eventData
      */
-    private function terminalEventTime(HikvisionTerminal $terminal, array $eventData): Carbon
+    public function terminalEventTime(HikvisionTerminal $terminal, array $eventData): Carbon
     {
         $stamp = $eventData['time'] ?? $eventData['dateTime'] ?? null;
 

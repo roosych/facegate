@@ -54,6 +54,16 @@
                 </div>
 
                 <div>
+                    <x-input-label for="direction" value="Direction" />
+                    <select id="direction" name="direction" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
+                        <option value="">— None —</option>
+                        <option value="in" @selected(old('direction') === 'in')>Вход</option>
+                        <option value="out" @selected(old('direction') === 'out')>Выход</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('direction')" class="mt-1" />
+                </div>
+
+                <div>
                     <x-input-label for="access_point_id" value="Access Point" />
                     <select id="access_point_id" name="access_point_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                         <option value="">— None —</option>
