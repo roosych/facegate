@@ -104,7 +104,7 @@ class MonitorController extends Controller
                 'employee_name' => $winnerEvent['employee_name'],
                 'position' => $winnerEvent['position'] ?? null,
                 'department' => $winnerEvent['department'] ?? null,
-                'photo_url' => $winnerEvent['employee_id'] !== null
+                'photo_url' => $winnerEvent['employee_id'] !== null && ($winnerEvent['has_photo'] ?? false)
                     ? URL::signedRoute('monitor.photo', ['accessPoint' => $accessPoint, 'employee' => $winnerEvent['employee_id']])
                     : null,
                 'event_time' => $winnerEvent['event_time'],

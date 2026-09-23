@@ -101,6 +101,7 @@ class HikvisionEventWebhookController extends Controller
             'emp_code' => $empCode,
             'position' => $employee?->position,
             'department' => $employee?->department,
+            'has_photo' => $employee?->photoAbsolutePath() !== null,
             'event_time' => $eventTime->toIso8601String(),
             'alcohol_tested' => $alcoholInfo !== null,
             'alcohol_passed' => $alcoholInfo !== null ? ($alcoholInfo['result'] ?? null) === 'normal' : null,
