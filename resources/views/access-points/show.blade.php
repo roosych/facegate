@@ -25,9 +25,6 @@
                         Синхронизировать эту точку
                     </button>
                 </form>
-                <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('monitor.show', ['accessPoints' => (string) $accessPoint->id]) }}" target="_blank" class="block text-center w-full px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-                    Открыть монитор
-                </a>
             </div>
         </div>
 

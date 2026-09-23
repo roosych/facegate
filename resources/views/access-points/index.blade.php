@@ -403,10 +403,6 @@
                                 class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
                                 Отправить
                             </button>
-                            <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('monitor.show', ['accessPoints' => (string) $accessPoint->id]) }}" target="_blank"
-                                class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">
-                                Открыть монитор
-                            </a>
                         @elseif($freeTerminals->isNotEmpty())
                             <button type="button" @click="modalOpen = true"
                                 class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors">

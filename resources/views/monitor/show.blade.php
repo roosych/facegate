@@ -157,10 +157,10 @@
 
         <main class="w-full pt-20 min-h-screen bg-[#f9f9f9] flex flex-col justify-center">
             <div class="w-full max-w-7xl mx-auto px-12 py-20">
-                <div class="grid grid-cols-1 {{ $accessPoints->count() >= 2 ? 'md:grid-cols-2' : '' }} items-stretch gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 items-stretch gap-8">
                     @forelse($accessPoints as $accessPoint)
                         <div
-                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative"
+                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative {{ $accessPoints->count() === 1 ? 'md:col-span-2 md:mx-auto md:w-full md:max-w-[calc(50%-1rem)]' : '' }}"
                             :class="blockClasses({{ $accessPoint->id }})"
                         >
                             {{-- Small label above the header row — the reference this layout is based on

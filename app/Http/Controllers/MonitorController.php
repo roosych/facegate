@@ -23,10 +23,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * commonly has an "in" and an "out" terminal, but the screen shows whichever one most recently
  * saw a pass, labelled with that terminal's own direction — not a fixed in/out pair of blocks.
  *
- * Two ways to reach a screen: a named, persistent MonitorScreen (see showScreen()/statusScreen()
- * — the supported path, managed at /monitor-screens) whose URL keeps working after its turnstile
- * list changes, or a raw comma list of access point ids (show()/status()) for a quick one-off
- * look without creating a screen.
+ * A screen is always a named, persistent MonitorScreen (managed at /monitor-screens), so its URL
+ * keeps working after the admin changes which turnstiles it shows.
  */
 class MonitorController extends Controller
 {
@@ -34,19 +32,6 @@ class MonitorController extends Controller
         'in' => 'Giriş',
         'out' => 'Çıxış',
     ];
-
-    public function show(string $accessPoints): View
-    {
-        $points = $this->resolveAccessPoints($accessPoints);
-        $statusUrl = URL::signedRoute('monitor.status', ['accessPoints' => $accessPoints]);
-
-        return view('monitor.show', ['accessPoints' => $points, 'statusUrl' => $statusUrl]);
-    }
-
-    public function status(string $accessPoints): JsonResponse
-    {
-        return $this->statusResponse($this->resolveAccessPoints($accessPoints));
-    }
 
     public function showScreen(MonitorScreen $monitorScreen): View
     {
@@ -79,26 +64,6 @@ class MonitorController extends Controller
         return response()->json([
             'access_points' => $points->map(fn (AccessPoint $ap) => $this->accessPointPayload($ap))->all(),
         ]);
-    }
-
-    /**
-     * @return Collection<int, AccessPoint>
-     */
-    private function resolveAccessPoints(string $accessPoints): Collection
-    {
-        $ids = collect(explode(',', $accessPoints))
-            ->map(fn (string $id) => (int) $id)
-            ->unique();
-
-        $found = AccessPoint::whereIn('id', $ids)->get()->keyBy('id');
-
-        $ordered = $ids->map(fn (int $id) => $found->get($id))->filter()->values();
-
-        if ($ordered->isEmpty()) {
-            abort(404);
-        }
-
-        return $ordered;
     }
 
     /**
