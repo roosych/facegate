@@ -37,7 +37,11 @@ class MonitorController extends Controller
     {
         $statusUrl = URL::signedRoute('monitor.status-screen', ['monitorScreen' => $monitorScreen]);
 
-        return view('monitor.show', ['accessPoints' => $monitorScreen->accessPoints, 'statusUrl' => $statusUrl]);
+        return view('monitor.show', [
+            'accessPoints' => $monitorScreen->accessPoints,
+            'statusUrl' => $statusUrl,
+            'title' => $monitorScreen->name,
+        ]);
     }
 
     public function statusScreen(MonitorScreen $monitorScreen): JsonResponse
