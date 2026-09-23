@@ -159,8 +159,12 @@
             <div class="w-full max-w-7xl mx-auto px-12 py-20">
                 <div class="grid grid-cols-1 md:grid-cols-2 items-stretch gap-8">
                     @forelse($accessPoints as $accessPoint)
+                        {{-- An odd count leaves the last card alone on its row — center it at the
+                             same width a card would have next to a neighbour, instead of letting
+                             the grid stretch it to (a single turnstile) or left-align it in (a
+                             trailing third, fifth, ...) the first column. --}}
                         <div
-                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative {{ $accessPoints->count() === 1 ? 'md:col-span-2 md:mx-auto md:w-full md:max-w-[calc(50%-1rem)]' : '' }}"
+                            class="monitor-card bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col relative {{ $loop->last && $accessPoints->count() % 2 === 1 ? 'md:col-span-2 md:mx-auto md:w-full md:max-w-[calc(50%-1rem)]' : '' }}"
                             :class="blockClasses({{ $accessPoint->id }})"
                         >
                             {{-- Small label above the header row — the reference this layout is based on
