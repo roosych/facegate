@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\HikvisionTerminal;
 use App\Models\SyncRun;
 use App\Services\HikvisionSyncService;
+use App\Services\RusGuard\RusGuardHealth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -191,7 +192,7 @@ class MonitoringController extends Controller
             ->select('hikvision_terminal_id', DB::raw('max(started_at) as last_at'))
             ->pluck('last_at', 'hikvision_terminal_id');
 
-        $polledAt = DB::table('rusguard_audit_cursor')->value('polled_at');
+        $rusGuardHealth = RusGuardHealth::snapshot();
 
         $lastRusGuardRun = SyncRun::where('kind', SyncRun::KIND_RUSGUARD)
             ->where('status', SyncRun::STATUS_SUCCESS)
@@ -220,9 +221,8 @@ class MonitoringController extends Controller
                     || ! $terminal->accessPoint->is_active,
             ])->all(),
             'rusguard' => [
-                'audit_polled' => $this->ago($polledAt),
-                // It runs every minute; five is slack for a long RusGuard round-trip.
-                'audit_stale' => $polledAt === null || Carbon::parse($polledAt)->lt(now()->subMinutes(5)),
+                'audit_polled' => $rusGuardHealth['polled_at'],
+                'audit_stale' => ! $rusGuardHealth['online'],
                 'last_sync' => $this->ago($lastRusGuardRun?->started_at),
                 'last_sync_duration' => $lastRusGuardRun?->durationLabel(),
             ],

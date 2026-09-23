@@ -54,7 +54,7 @@
     <div
         class="bg-white rounded-lg border border-gray-200 mb-4"
         x-data="{
-            data: null,
+            data: { rusguard_db: @js($rusGuardHealth) },
             timer: null,
             get anyActive() {
                 if (!this.data) return false;
@@ -86,6 +86,22 @@
         </div>
 
         <div x-show="data">
+            {{-- RusGuard DB connectivity --}}
+            <div class="flex items-center gap-3 px-5 py-2.5 border-b border-gray-50">
+                <span
+                    class="flex-shrink-0 w-2 h-2 rounded-full"
+                    :class="data?.rusguard_db?.online ? 'bg-emerald-400' : 'bg-red-400'"
+                ></span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm text-gray-800">RusGuard БД</p>
+                    <p class="text-xs text-gray-400" x-text="data?.rusguard_db?.online ? 'Доступна' : 'Недоступна'"></p>
+                </div>
+                <span
+                    class="text-xs text-gray-400 flex-shrink-0"
+                    x-text="data?.rusguard_db?.polled_at ? 'опрошена ' + data.rusguard_db.polled_at : 'нет данных'"
+                ></span>
+            </div>
+
             {{-- RusGuard org-wide sync --}}
             <div class="flex items-center gap-3 px-5 py-2.5 border-b border-gray-50">
                 <span

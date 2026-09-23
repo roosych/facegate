@@ -9,11 +9,22 @@ use App\Services\SyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DashboardStatusTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_reports_rusguard_db_health(): void
+    {
+        DB::table('rusguard_audit_cursor')->updateOrInsert(['id' => 1], ['polled_at' => now()->subMinutes(20)]);
+
+        $response = $this->actingAs(User::factory()->create())->getJson(route('dashboard.status'));
+
+        $response->assertOk();
+        $response->assertJsonPath('rusguard_db.online', false);
+    }
 
     public function test_reports_rusguard_sync_and_terminal_status(): void
     {
@@ -64,7 +75,7 @@ class DashboardStatusTest extends TestCase
         ]);
 
         DB::table('failed_jobs')->insert([
-            'uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'uuid' => (string) Str::uuid(),
             'connection' => 'database',
             'queue' => 'default',
             'payload' => json_encode(['displayName' => 'App\\Jobs\\FetchHikvisionEventsJob']),
