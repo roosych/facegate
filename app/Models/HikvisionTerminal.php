@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'direction', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats', 'last_push_at'])]
+#[Fillable(['name', 'ip', 'port', 'username', 'password', 'protocol', 'location', 'direction', 'is_active', 'access_point_id', 'alcohol_params', 'sync_stats', 'last_push_at', 'alcohol_last_cleaned_at', 'alcohol_cleaning_notified_at'])]
 class HikvisionTerminal extends Model
 {
     use HasFactory;
@@ -76,6 +76,32 @@ class HikvisionTerminal extends Model
         return $resolved;
     }
 
+    /** Alcohol tests run on this terminal since it was last cleaned (or ever, if never cleaned). */
+    public function alcoholTestCountSinceCleaning(): int
+    {
+        return $this->accessEvents()
+            ->hasAlcoholTest()
+            ->when(
+                $this->alcohol_last_cleaned_at,
+                fn ($query) => $query->where('event_time', '>', $this->alcohol_last_cleaned_at)
+            )
+            ->count();
+    }
+
+    public function needsAlcoholCleaning(): bool
+    {
+        return $this->alcoholTestCountSinceCleaning() >= config('alcohol.cleaning_threshold');
+    }
+
+    /** Stamps the terminal as freshly cleaned and re-arms the threshold email for the next cycle. */
+    public function markAlcoholCleaned(): void
+    {
+        $this->update([
+            'alcohol_last_cleaned_at' => now(),
+            'alcohol_cleaning_notified_at' => null,
+        ]);
+    }
+
     protected function casts(): array
     {
         return [
@@ -85,6 +111,8 @@ class HikvisionTerminal extends Model
             'alcohol_params' => 'array',
             'sync_stats' => 'array',
             'last_push_at' => 'datetime',
+            'alcohol_last_cleaned_at' => 'datetime',
+            'alcohol_cleaning_notified_at' => 'datetime',
         ];
     }
 }

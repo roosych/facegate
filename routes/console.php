@@ -14,6 +14,7 @@ Schedule::command('sync-logs:prune')->daily();
 Schedule::command('model:prune', ['--model' => [SyncRun::class]])->daily();
 Schedule::command('queue:prune-failed', ['--hours' => 168])->daily();
 Schedule::command('alcohol:clear-expired-skip')->everyFiveMinutes();
+Schedule::command('alcohol:check-cleaning-threshold')->daily();
 
 // Real-time events now arrive via the Hikvision terminal's own push (HttpHostNotification →
 // HikvisionEventWebhookController). This is just a safety net in case a terminal's push

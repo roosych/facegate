@@ -24,6 +24,9 @@ class DashboardController extends Controller
             'active_employees' => Employee::where('is_active', true)->count(),
             'accessPoints' => AccessPoint::count(),
             'terminals' => HikvisionTerminal::where('is_active', true)->count(),
+            'alcohol_terminals' => HikvisionTerminal::where('is_active', true)->get()
+                ->filter(fn (HikvisionTerminal $terminal) => $terminal->resolvedAlcoholParams()['enabled'])
+                ->count(),
             'events_today' => AccessEvent::whereDate('event_time', today())->count(),
             'events_week' => AccessEvent::whereBetween('event_time', [now()->startOfWeek(), now()])->count(),
             'last_sync' => SyncLog::where('status', 'success')->latest()->value('created_at'),
@@ -56,6 +59,11 @@ class DashboardController extends Controller
                 $live = Cache::get(HikvisionSyncService::SYNC_STATUS_KEY.'_'.$terminal->id);
                 $stats = $terminal->sync_stats ?? [];
 
+                // Live config, not the `sync_stats` snapshot — that's only refreshed by a full
+                // terminal sync, so it stays stale (and wrongly gates the cleaning counter below)
+                // for hours after a toggle flips this on the device without going through a sync.
+                $alcoholEnabled = $terminal->resolvedAlcoholParams()['enabled'];
+
                 return [
                     'id' => $terminal->id,
                     'name' => $terminal->name,
@@ -64,8 +72,11 @@ class DashboardController extends Controller
                     'total' => $live['total'] ?? null,
                     'synced_at' => $stats['synced_at'] ?? null,
                     'persons_failed' => count($stats['persons_failed'] ?? []),
-                    'alcohol_enabled' => (bool) ($stats['alcohol_enabled'] ?? false),
+                    'alcohol_enabled' => $alcoholEnabled,
                     'alcohol_failed' => $stats['alcohol_failed'] ?? 0,
+                    'alcohol_test_count' => $alcoholEnabled ? $terminal->alcoholTestCountSinceCleaning() : 0,
+                    'alcohol_cleaning_threshold' => config('alcohol.cleaning_threshold'),
+                    'needs_alcohol_cleaning' => $alcoholEnabled && $terminal->needsAlcoholCleaning(),
                 ];
             });
 

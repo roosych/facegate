@@ -11,4 +11,9 @@ return [
     // recipients — matches the device's own "drinking" threshold. Change the live value via
     // the /alcohol page UI, not this file.
     'notification_threshold_default' => (float) env('ALCOHOL_NOTIFICATION_THRESHOLD', 20),
+
+    // Number of alcohol tests a terminal can run since its last cleaning before the dashboard
+    // flags it and an email goes out. Env-only (no live-editable override like the settings
+    // above) — change it by redeploying with a new value.
+    'cleaning_threshold' => (int) env('ALCOHOL_CLEANING_THRESHOLD', 20000),
 ];

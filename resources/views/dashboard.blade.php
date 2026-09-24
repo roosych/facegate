@@ -12,7 +12,7 @@
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
             <p class="text-xs text-gray-400 font-medium">Точки доступа</p>
             <p class="mt-1 text-2xl font-bold text-blue-600">{{ $stats['accessPoints'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['terminals'] }} терминалов</p>
+            <p class="text-xs text-gray-400 mt-0.5">{{ $stats['terminals'] }} терминалов · {{ $stats['alcohol_terminals'] }} с алкотестом</p>
         </div>
         <div class="bg-white rounded-lg border border-gray-200 px-4 py-4">
             <p class="text-xs text-gray-400 font-medium">Событий сегодня</p>
@@ -69,6 +69,21 @@
                     // network blip — retry
                 }
                 this.timer = setTimeout(() => this.poll(), this.anyActive ? 2000 : 15000);
+            },
+            cleaningTerminalId: null,
+            async markCleaned(id) {
+                if (this.cleaningTerminalId === id) return;
+                this.cleaningTerminalId = id;
+                try {
+                    await fetch(`/hikvision/${id}/alcohol/cleaned`, {
+                        method: 'PATCH',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+                    });
+                    clearTimeout(this.timer);
+                    await this.poll();
+                } finally {
+                    this.cleaningTerminalId = null;
+                }
             },
             init() {
                 this.poll();
@@ -128,29 +143,48 @@
 
             {{-- Hikvision terminals --}}
             <template x-for="t in (data?.terminals ?? [])" :key="t.id">
-                <div class="flex items-center gap-3 px-5 py-2.5 border-b border-gray-50 last:border-b-0">
-                    <span
-                        class="flex-shrink-0 w-2 h-2 rounded-full"
-                        :class="{
-                            'bg-indigo-400 animate-pulse': ['pending', 'running'].includes(t.status),
-                            'bg-emerald-400': ['done', 'idle'].includes(t.status),
-                            'bg-red-400': t.status === 'failed',
-                        }"
-                    ></span>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-sm text-gray-800 truncate" x-text="t.name"></p>
-                        <p class="text-xs text-gray-400 truncate">
-                            <template x-if="['pending', 'running'].includes(t.status)">
-                                <span x-text="'Синхронизация ' + (t.done ?? 0) + '/' + (t.total ?? '?')"></span>
-                            </template>
-                            <template x-if="!['pending', 'running'].includes(t.status)">
-                                <span x-text="t.synced_at ? 'Последняя синхронизация ' + t.synced_at : 'Ещё не синхронизировался'"></span>
-                            </template>
-                        </p>
+                <div>
+                    <div class="flex items-center gap-3 px-5 py-2.5 border-b border-gray-50 last:border-b-0">
+                        <span
+                            class="flex-shrink-0 w-2 h-2 rounded-full"
+                            :class="{
+                                'bg-indigo-400 animate-pulse': ['pending', 'running'].includes(t.status),
+                                'bg-emerald-400': ['done', 'idle'].includes(t.status),
+                                'bg-red-400': t.status === 'failed',
+                            }"
+                        ></span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-gray-800 truncate" x-text="t.name"></p>
+                            <p class="text-xs text-gray-400 truncate">
+                                <template x-if="['pending', 'running'].includes(t.status)">
+                                    <span x-text="'Синхронизация ' + (t.done ?? 0) + '/' + (t.total ?? '?')"></span>
+                                </template>
+                                <template x-if="!['pending', 'running'].includes(t.status)">
+                                    <span x-text="t.synced_at ? 'Последняя синхронизация ' + t.synced_at : 'Ещё не синхронизировался'"></span>
+                                </template>
+                            </p>
+                        </div>
+                        <div class="text-right flex-shrink-0 text-xs space-y-0.5">
+                            <p x-show="t.persons_failed > 0" class="text-red-500" x-text="t.persons_failed + ' с ошибкой'"></p>
+                            <p x-show="t.alcohol_enabled && t.alcohol_failed > 0" class="text-amber-500" x-text="t.alcohol_failed + ' ошибок алкотеста'"></p>
+                            <p x-show="t.alcohol_enabled" :class="t.needs_alcohol_cleaning ? 'text-amber-500' : 'text-gray-400'" x-text="'Алкотесты: ' + t.alcohol_test_count + ' / ' + t.alcohol_cleaning_threshold"></p>
+                        </div>
                     </div>
-                    <div class="text-right flex-shrink-0 text-xs space-y-0.5">
-                        <p x-show="t.persons_failed > 0" class="text-red-500" x-text="t.persons_failed + ' с ошибкой'"></p>
-                        <p x-show="t.alcohol_enabled && t.alcohol_failed > 0" class="text-amber-500" x-text="t.alcohol_failed + ' ошибок алкотеста'"></p>
+                    <div x-show="t.needs_alcohol_cleaning" class="flex items-center gap-3 px-5 py-2.5 border-b border-gray-50 last:border-b-0 bg-amber-50/60">
+                        <span class="flex-shrink-0 w-2 h-2 rounded-full bg-amber-400"></span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm text-amber-700 truncate">
+                                <span x-text="t.name"></span> — пора чистить/калибровать
+                            </p>
+                            <p class="text-xs text-amber-500" x-text="t.alcohol_test_count + ' проверок из ' + t.alcohol_cleaning_threshold"></p>
+                        </div>
+                        <button
+                            type="button"
+                            @click="markCleaned(t.id)"
+                            :disabled="cleaningTerminalId === t.id"
+                            class="flex-shrink-0 px-3 py-1.5 bg-amber-500 text-white text-xs rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50"
+                            x-text="cleaningTerminalId === t.id ? 'Сохранение…' : 'Чистка завершена'"
+                        ></button>
                     </div>
                 </div>
             </template>
