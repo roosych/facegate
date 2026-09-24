@@ -18,7 +18,7 @@ class CheckAlcoholCleaningThresholdTest extends TestCase
     {
         Mail::fake();
         config(['alcohol.cleaning_threshold' => 2]);
-        Setting::set('alcohol_notification_emails', 'security@example.com');
+        Setting::set('alcohol_cleaning_notification_emails', 'security@example.com');
 
         $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create();
         AccessEvent::factory(2)->for($terminal, 'hikvisionTerminal')->create([
@@ -31,11 +31,28 @@ class CheckAlcoholCleaningThresholdTest extends TestCase
         $this->assertNotNull($terminal->fresh()->alcohol_cleaning_notified_at);
     }
 
+    public function test_uses_the_cleaning_list_not_the_failed_test_notification_list(): void
+    {
+        Mail::fake();
+        config(['alcohol.cleaning_threshold' => 1]);
+        Setting::set('alcohol_notification_emails', 'leadership@example.com');
+        Setting::set('alcohol_cleaning_notification_emails', 'it@example.com');
+
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create();
+        AccessEvent::factory()->for($terminal, 'hikvisionTerminal')->create([
+            'raw_data' => ['alcoholDetectionInfo' => ['result' => 'normal']],
+        ]);
+
+        $this->artisan('alcohol:check-cleaning-threshold')->assertExitCode(0);
+
+        Mail::assertQueued(TerminalNeedsCleaningMail::class, fn ($mail) => $mail->hasTo('it@example.com') && ! $mail->hasTo('leadership@example.com'));
+    }
+
     public function test_does_not_notify_a_terminal_already_notified_for_this_cycle(): void
     {
         Mail::fake();
         config(['alcohol.cleaning_threshold' => 1]);
-        Setting::set('alcohol_notification_emails', 'security@example.com');
+        Setting::set('alcohol_cleaning_notification_emails', 'security@example.com');
 
         $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create(['alcohol_cleaning_notified_at' => now()->subDay()]);
         AccessEvent::factory()->for($terminal, 'hikvisionTerminal')->create([
@@ -51,7 +68,7 @@ class CheckAlcoholCleaningThresholdTest extends TestCase
     {
         Mail::fake();
         config(['alcohol.cleaning_threshold' => 5]);
-        Setting::set('alcohol_notification_emails', 'security@example.com');
+        Setting::set('alcohol_cleaning_notification_emails', 'security@example.com');
 
         $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create();
         AccessEvent::factory()->for($terminal, 'hikvisionTerminal')->create([
@@ -68,7 +85,7 @@ class CheckAlcoholCleaningThresholdTest extends TestCase
     {
         Mail::fake();
         config(['alcohol.cleaning_threshold' => 1]);
-        Setting::set('alcohol_notification_emails', 'security@example.com');
+        Setting::set('alcohol_cleaning_notification_emails', 'security@example.com');
 
         $terminal = HikvisionTerminal::factory()->create();
         AccessEvent::factory()->for($terminal, 'hikvisionTerminal')->create([

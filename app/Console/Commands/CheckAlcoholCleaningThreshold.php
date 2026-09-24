@@ -17,7 +17,7 @@ class CheckAlcoholCleaningThreshold extends Command
     public function handle(): int
     {
         $threshold = config('alcohol.cleaning_threshold');
-        $recipients = Setting::alcoholNotificationEmails();
+        $recipients = Setting::alcoholCleaningNotificationEmails();
         $notified = 0;
 
         $terminals = HikvisionTerminal::where('is_active', true)

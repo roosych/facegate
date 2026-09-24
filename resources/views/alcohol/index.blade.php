@@ -72,6 +72,31 @@
         @enderror
     </div>
 
+    <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
+        <form method="POST" action="{{ route('alcohol.cleaning-notifications') }}" class="flex items-end gap-3">
+            @csrf
+            <div class="flex-1">
+                <label class="block text-xs font-medium text-gray-500 mb-1">Email техперсонала для уведомлений об очистке/калибровке терминала (через запятую)</label>
+                <input
+                    type="text"
+                    name="cleaning_notification_emails"
+                    value="{{ old('cleaning_notification_emails', $cleaningNotificationEmails) }}"
+                    placeholder="it@example.com"
+                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                >
+            </div>
+            <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                Сохранить
+            </button>
+        </form>
+        <p class="text-xs text-gray-400 mt-2">
+            Отдельный список от уведомлений о провале теста выше — это письмо про обслуживание устройства, не про сотрудника.
+        </p>
+        @error('cleaning_notification_emails')
+            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+        @enderror
+    </div>
+
     <div class="flex items-center justify-between mb-3">
         <p class="text-sm text-gray-500">Обязаны проходить проверку: {{ $rows->count() }}</p>
     </div>

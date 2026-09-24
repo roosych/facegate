@@ -36,4 +36,12 @@ class Setting extends Model
 
         return array_values(array_filter(array_map('trim', explode(',', $raw))));
     }
+
+    /** Recipients for the "terminal needs cleaning/calibration" alert — separate from the failed-test list above, since it's a maintenance concern for technical staff, not HR/security. */
+    public static function alcoholCleaningNotificationEmails(): array
+    {
+        $raw = static::get('alcohol_cleaning_notification_emails', '');
+
+        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
 }

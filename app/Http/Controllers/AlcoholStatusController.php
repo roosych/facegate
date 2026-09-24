@@ -38,6 +38,7 @@ class AlcoholStatusController extends Controller
             'graceMinutes' => Setting::alcoholSkipGraceMinutes(),
             'notificationThreshold' => Setting::alcoholNotificationThreshold(),
             'notificationEmails' => implode(', ', Setting::alcoholNotificationEmails()),
+            'cleaningNotificationEmails' => implode(', ', Setting::alcoholCleaningNotificationEmails()),
         ]);
     }
 
@@ -59,18 +60,53 @@ class AlcoholStatusController extends Controller
             'notification_emails' => ['nullable', 'string'],
         ]);
 
-        $emails = array_values(array_filter(array_map('trim', explode(',', $validated['notification_emails'] ?? ''))));
+        $emails = $this->parseEmailList($validated['notification_emails'] ?? '');
 
-        foreach ($emails as $email) {
-            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return back()->withErrors(['notification_emails' => "\"{$email}\" — некорректный email-адрес."])->withInput();
-            }
+        if (($invalid = $this->firstInvalidEmail($emails)) !== null) {
+            return back()->withErrors(['notification_emails' => "\"{$invalid}\" — некорректный email-адрес."])->withInput();
         }
 
         Setting::set('alcohol_notification_threshold', (string) $validated['notification_threshold']);
         Setting::set('alcohol_notification_emails', implode(',', $emails));
 
         return redirect()->route('alcohol.index')->with('success', 'Настройки уведомлений обновлены.');
+    }
+
+    public function updateCleaningNotificationSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'cleaning_notification_emails' => ['nullable', 'string'],
+        ]);
+
+        $emails = $this->parseEmailList($validated['cleaning_notification_emails'] ?? '');
+
+        if (($invalid = $this->firstInvalidEmail($emails)) !== null) {
+            return back()->withErrors(['cleaning_notification_emails' => "\"{$invalid}\" — некорректный email-адрес."])->withInput();
+        }
+
+        Setting::set('alcohol_cleaning_notification_emails', implode(',', $emails));
+
+        return redirect()->route('alcohol.index')->with('success', 'Адресаты уведомлений об очистке обновлены.');
+    }
+
+    /** @return array<int, string> */
+    private function parseEmailList(string $raw): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', $raw))));
+    }
+
+    /**
+     * @param  array<int, string>  $emails
+     */
+    private function firstInvalidEmail(array $emails): ?string
+    {
+        foreach ($emails as $email) {
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return $email;
+            }
+        }
+
+        return null;
     }
 
     /**
