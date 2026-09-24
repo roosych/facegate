@@ -99,6 +99,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/hikvision/{hikvision}/alcohol', [HikvisionTerminalController::class, 'alcoholSettings'])->name('hikvision.alcohol');
     Route::put('/hikvision/{hikvision}/alcohol', [HikvisionTerminalController::class, 'updateAlcoholSettings'])->name('hikvision.alcohol.update');
     Route::patch('/hikvision/{hikvision}/alcohol/toggle', [HikvisionTerminalController::class, 'toggleAlcohol'])->name('hikvision.alcohol.toggle');
+    Route::patch('/hikvision/{hikvision}/alcohol/cleaned', [HikvisionTerminalController::class, 'markAlcoholCleaned'])->name('hikvision.alcohol.cleaned');
 
     // Hikvision sync
     Route::get('/hikvision-sync', [HikvisionSyncController::class, 'index'])->name('hikvision.sync.index');

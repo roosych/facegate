@@ -383,6 +383,13 @@ class HikvisionTerminalController extends Controller
             ->with($pushOk ? 'success' : 'error', $message);
     }
 
+    public function markAlcoholCleaned(HikvisionTerminal $hikvision): JsonResponse
+    {
+        $hikvision->markAlcoholCleaned();
+
+        return response()->json(['success' => true]);
+    }
+
     public function checkConnection(HikvisionTerminal $hikvision): JsonResponse
     {
         try {

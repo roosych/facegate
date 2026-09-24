@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccessEvent;
 use App\Models\HikvisionTerminal;
 use App\Models\User;
 use App\Services\HikvisionSyncService;
@@ -52,6 +53,26 @@ class DashboardStatusTest extends TestCase
         $response->assertJsonPath('terminals.0.done', 3);
         $response->assertJsonPath('terminals.0.persons_failed', 1);
         $response->assertJsonPath('terminals.0.alcohol_failed', 2);
+    }
+
+    public function test_reports_alcohol_cleaning_status_for_alcohol_enabled_terminals(): void
+    {
+        config(['alcohol.cleaning_threshold' => 1]);
+
+        $terminal = HikvisionTerminal::factory()->alcoholEnabled()->create([
+            'is_active' => true,
+            'sync_stats' => ['alcohol_enabled' => true],
+        ]);
+        AccessEvent::factory()->for($terminal, 'hikvisionTerminal')->create([
+            'raw_data' => ['alcoholDetectionInfo' => ['result' => 'normal']],
+        ]);
+
+        $response = $this->actingAs(User::factory()->create())->getJson(route('dashboard.status'));
+
+        $response->assertOk();
+        $response->assertJsonPath('terminals.0.alcohol_test_count', 1);
+        $response->assertJsonPath('terminals.0.alcohol_cleaning_threshold', 1);
+        $response->assertJsonPath('terminals.0.needs_alcohol_cleaning', true);
     }
 
     public function test_excludes_inactive_terminals(): void

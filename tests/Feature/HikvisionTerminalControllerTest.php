@@ -32,6 +32,19 @@ class HikvisionTerminalControllerTest extends TestCase
         $response->assertSessionHasErrors('direction');
     }
 
+    public function test_mark_alcohol_cleaned_stamps_the_terminal_and_resets_the_notification_flag(): void
+    {
+        $terminal = HikvisionTerminal::factory()->create(['alcohol_cleaning_notified_at' => now()->subHour()]);
+
+        $response = $this->actingAs(User::factory()->create())
+            ->patchJson(route('hikvision.alcohol.cleaned', $terminal));
+
+        $response->assertOk()->assertJson(['success' => true]);
+        $terminal->refresh();
+        $this->assertNotNull($terminal->alcohol_last_cleaned_at);
+        $this->assertNull($terminal->alcohol_cleaning_notified_at);
+    }
+
     /**
      * @return array<string, mixed>
      */
