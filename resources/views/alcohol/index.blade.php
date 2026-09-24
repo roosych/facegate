@@ -8,93 +8,107 @@
         </div>
     @endif
 
-    <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
-        <form method="POST" action="{{ route('alcohol.grace-period') }}" class="flex items-end gap-3">
-            @csrf
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Льготный период после прохождения (минуты)</label>
-                <input
-                    type="number"
-                    name="grace_minutes"
-                    value="{{ old('grace_minutes', $graceMinutes) }}"
-                    min="1"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
+    <div class="bg-white rounded-lg border border-gray-200 mb-4" x-data="{ open: {{ $errors->any() ? 'true' : 'false' }} }">
+        <button
+            type="button"
+            @click="open = !open"
+            class="w-full flex items-center justify-between px-5 py-3 text-sm font-medium text-gray-700"
+        >
+            Настройки алкотеста
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform" :class="{ 'rotate-180': open }" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            </svg>
+        </button>
+        <div x-show="open" class="px-5 pb-4 divide-y divide-gray-100">
+            <div class="pb-4">
+                <form method="POST" action="{{ route('alcohol.grace-period') }}" class="flex items-end gap-3">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Льготный период после прохождения (минуты)</label>
+                        <input
+                            type="number"
+                            name="grace_minutes"
+                            value="{{ old('grace_minutes', $graceMinutes) }}"
+                            min="1"
+                            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        >
+                    </div>
+                    <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                        Сохранить
+                    </button>
+                    <p class="text-xs text-gray-400 mb-1.5">
+                        Применяется ко всем — период AlcoGroup в самом RusGuard это отдельное понятие цикла проверки, а не этот льготный период.
+                    </p>
+                </form>
+                @error('grace_minutes')
+                    <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+                @enderror
             </div>
-            <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-                Сохранить
-            </button>
-            <p class="text-xs text-gray-400 mb-1.5">
-                Применяется ко всем — период AlcoGroup в самом RusGuard это отдельное понятие цикла проверки, а не этот льготный период.
-            </p>
-        </form>
-        @error('grace_minutes')
-            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
-        @enderror
-    </div>
 
-    <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
-        <form method="POST" action="{{ route('alcohol.notifications') }}" class="flex items-end gap-3">
-            @csrf
-            <div>
-                <label class="block text-xs font-medium text-gray-500 mb-1">Порог уведомления (мг/100мл)</label>
-                <input
-                    type="number"
-                    step="0.01"
-                    name="notification_threshold"
-                    value="{{ old('notification_threshold', $notificationThreshold) }}"
-                    min="0"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
+            <div class="py-4">
+                <form method="POST" action="{{ route('alcohol.notifications') }}" class="flex items-end gap-3">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Порог уведомления (мг/100мл)</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            name="notification_threshold"
+                            value="{{ old('notification_threshold', $notificationThreshold) }}"
+                            min="0"
+                            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        >
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Email для уведомлений (через запятую)</label>
+                        <input
+                            type="text"
+                            name="notification_emails"
+                            value="{{ old('notification_emails', $notificationEmails) }}"
+                            placeholder="security@example.com, hr@example.com"
+                            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        >
+                    </div>
+                    <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                        Сохранить
+                    </button>
+                </form>
+                <p class="text-xs text-gray-400 mt-2">
+                    При провале теста с концентрацией не ниже этой всем указанным адресатам отправляется письмо.
+                </p>
+                @error('notification_threshold')
+                    <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+                @enderror
+                @error('notification_emails')
+                    <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+                @enderror
             </div>
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Email для уведомлений (через запятую)</label>
-                <input
-                    type="text"
-                    name="notification_emails"
-                    value="{{ old('notification_emails', $notificationEmails) }}"
-                    placeholder="security@example.com, hr@example.com"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
-            </div>
-            <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-                Сохранить
-            </button>
-        </form>
-        <p class="text-xs text-gray-400 mt-2">
-            При провале теста с концентрацией не ниже этой всем указанным адресатам отправляется письмо.
-        </p>
-        @error('notification_threshold')
-            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
-        @enderror
-        @error('notification_emails')
-            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
-        @enderror
-    </div>
 
-    <div class="bg-white rounded-lg border border-gray-200 px-5 py-4 mb-4">
-        <form method="POST" action="{{ route('alcohol.cleaning-notifications') }}" class="flex items-end gap-3">
-            @csrf
-            <div class="flex-1">
-                <label class="block text-xs font-medium text-gray-500 mb-1">Email техперсонала для уведомлений об очистке/калибровке терминала (через запятую)</label>
-                <input
-                    type="text"
-                    name="cleaning_notification_emails"
-                    value="{{ old('cleaning_notification_emails', $cleaningNotificationEmails) }}"
-                    placeholder="it@example.com"
-                    class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                >
+            <div class="pt-4">
+                <form method="POST" action="{{ route('alcohol.cleaning-notifications') }}" class="flex items-end gap-3">
+                    @csrf
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Email техперсонала для уведомлений об очистке/калибровке терминала (через запятую)</label>
+                        <input
+                            type="text"
+                            name="cleaning_notification_emails"
+                            value="{{ old('cleaning_notification_emails', $cleaningNotificationEmails) }}"
+                            placeholder="it@example.com"
+                            class="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        >
+                    </div>
+                    <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+                        Сохранить
+                    </button>
+                </form>
+                <p class="text-xs text-gray-400 mt-2">
+                    Отдельный список от уведомлений о провале теста выше — это письмо про обслуживание устройства, не про сотрудника.
+                </p>
+                @error('cleaning_notification_emails')
+                    <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
+                @enderror
             </div>
-            <button type="submit" class="px-4 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-                Сохранить
-            </button>
-        </form>
-        <p class="text-xs text-gray-400 mt-2">
-            Отдельный список от уведомлений о провале теста выше — это письмо про обслуживание устройства, не про сотрудника.
-        </p>
-        @error('cleaning_notification_emails')
-            <p class="text-xs text-red-500 mt-2">{{ $message }}</p>
-        @enderror
+        </div>
     </div>
 
     <div class="flex items-center justify-between mb-3">
